@@ -1,0 +1,2359 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>우리의 여행 노트 💕 | 커플 여행 일정 플래너</title>
+
+  <!-- Pretendard & Noto Sans KR 웹폰트 -->
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Pretendard', 'Noto Sans KR', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#fff1f2',
+              100: '#ffe4e6',
+              200: '#fecdd3',
+              400: '#fb7185',
+              500: '#f43f5e',
+              600: '#e11d48',
+              700: '#be123c',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Leaflet 지도 라이브러리 (구글 지도 API 키 입력 전에도 즉시 동작하는 기본 지도 엔진) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    /* 기본 스크롤바 및 모바일 터치 최적화 */
+    body {
+      background-color: #faf9f6;
+      color: #1c1917;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    /* 커스텀 스크롤바 */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #d6d3d1;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #a8a29e;
+    }
+
+    /* Leaflet 커스텀 번호 핀 스타일 */
+    .custom-leaflet-pin {
+      background: transparent;
+      border: none;
+    }
+    .pin-badge {
+      width: 32px;
+      height: 32px;
+      border-radius: 9999px;
+      color: white;
+      font-weight: 700;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2.5px solid #ffffff;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+      transition: transform 0.15s ease;
+    }
+    .pin-badge:hover {
+      transform: scale(1.15);
+    }
+
+    /* 모달 애니메이션 */
+    @keyframes fadeInScale {
+      from {
+        opacity: 0;
+        transform: scale(0.96) translateY(6px);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
+    .animate-modal {
+      animation: fadeInScale 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    /* 토스트 애니메이션 */
+    @keyframes slideUpToast {
+      from {
+        opacity: 0;
+        transform: translate(-50%, 16px);
+      }
+      to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+      }
+    }
+    .animate-toast {
+      animation: slideUpToast 0.25s ease-out forwards;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans selection:bg-rose-100 selection:text-rose-700">
+
+  <!-- ===================================================================== -->
+  <!-- 1. 상단 여행 설정 헤더 (Trip Setup Header)                              -->
+  <!-- ===================================================================== -->
+  <header class="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-stone-200/80 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3">
+      <!-- 상단 바: 로고 + 동기화 상태 + 액션 버튼 -->
+      <div class="flex items-center justify-between gap-2 mb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-2xl bg-gradient-to-br from-rose-500 to-pink-500 text-white flex items-center justify-center shadow-sm shrink-0">
+            <i data-lucide="heart" class="w-4 h-4 fill-white"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-bold tracking-wider uppercase text-rose-500">OUR TRAVEL NOTE</span>
+              <span id="syncStatusBadge" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-stone-100 text-stone-600">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                <span>자동 저장됨</span>
+              </span>
+            </div>
+            <!-- 여행 제목 인라인 수정 -->
+            <input
+              id="tripTitleInput"
+              type="text"
+              placeholder="여행 제목을 입력하세요 (예: 제주도 2박 3일 힐링 여행)"
+              class="w-full sm:w-96 text-base sm:text-lg font-bold text-stone-900 bg-transparent border-b border-transparent hover:border-stone-300 focus:border-rose-500 focus:outline-none transition-colors py-0.5"
+            />
+          </div>
+        </div>
+
+        <!-- 우측 공유 & 초기화 버튼 -->
+        <div class="flex items-center gap-2 shrink-0">
+          <button
+            onclick="openShareModal()"
+            class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 active:scale-95 text-white text-xs sm:text-sm font-semibold shadow-sm transition-all cursor-pointer"
+          >
+            <i data-lucide="share-2" class="w-4 h-4"></i>
+            <span>공유 · 연동</span>
+          </button>
+          <button
+            onclick="openResetModal()"
+            title="새 여행 만들기 (초기화)"
+            class="inline-flex items-center justify-center p-2 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 text-stone-600 transition-colors cursor-pointer"
+          >
+            <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- 하단 여행 메타 정보 바: 여행지, 시작일~종료일, D-Day 뱃지, 요약 -->
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-2.5 items-center bg-stone-50/90 p-2.5 rounded-2xl border border-stone-200/70">
+        <!-- 여행지 입력 & 지도 이동 -->
+        <div class="md:col-span-4 flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-stone-200/80">
+          <i data-lucide="map-pin" class="w-4 h-4 text-rose-500 shrink-0"></i>
+          <input
+            id="destinationInput"
+            type="text"
+            placeholder="여행지 입력 (예: 제주도, 오사카)"
+            class="w-full text-sm font-medium text-stone-800 bg-transparent focus:outline-none"
+          />
+          <button
+            onclick="searchDestinationOnMap()"
+            title="입력한 여행지로 지도 이동"
+            class="text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-2 py-1 rounded-lg shrink-0 transition-colors cursor-pointer"
+          >
+            지도이동
+          </button>
+        </div>
+
+        <!-- 날짜 선택 (시작일 ~ 종료일) -->
+        <div class="md:col-span-5 flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-stone-200/80">
+          <i data-lucide="calendar" class="w-4 h-4 text-rose-500 shrink-0"></i>
+          <input
+            id="startDateInput"
+            type="date"
+            class="w-full text-xs sm:text-sm font-medium text-stone-700 bg-transparent focus:outline-none cursor-pointer"
+          />
+          <span class="text-stone-400 font-bold">~</span>
+          <input
+            id="endDateInput"
+            type="date"
+            class="w-full text-xs sm:text-sm font-medium text-stone-700 bg-transparent focus:outline-none cursor-pointer"
+          />
+        </div>
+
+        <!-- D-Day 뱃지 & 여행 통계 요약 -->
+        <div class="md:col-span-3 flex items-center justify-between md:justify-end gap-2 px-1">
+          <span id="dDayBadge" class="inline-flex items-center px-2.5 py-1 rounded-xl text-xs font-bold bg-rose-100 text-rose-700">
+            D-Day
+          </span>
+          <span id="tripSummaryBadge" class="text-xs font-medium text-stone-500">
+            2일 · 0개 장소
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 일자별 탭 바 (Day 1, Day 2, Day 3...) -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-2 border-t border-stone-100 flex items-center justify-between gap-2">
+      <div id="dayTabsContainer" class="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
+        <!-- JS로 동적 렌더링 -->
+      </div>
+      <button
+        onclick="addOneMoreDay()"
+        class="shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-stone-600 hover:text-rose-600 hover:bg-rose-50 border border-dashed border-stone-300 transition-colors cursor-pointer"
+      >
+        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+        <span>날짜 추가</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ===================================================================== -->
+  <!-- 2. 모바일 뷰 전환 컨트롤 (모바일 화면 전용)                             -->
+  <!-- ===================================================================== -->
+  <div class="lg:hidden sticky top-[154px] z-20 bg-stone-50/95 backdrop-blur-xs px-4 py-2 border-b border-stone-200/70">
+    <div class="grid grid-cols-3 gap-1 p-1 bg-stone-200/70 rounded-xl text-xs font-semibold">
+      <button
+        id="mobileViewBothBtn"
+        onclick="setMobileView('both')"
+        class="py-1.5 rounded-lg bg-white text-stone-900 shadow-xs transition-all cursor-pointer"
+      >
+        함께 보기
+      </button>
+      <button
+        id="mobileViewListBtn"
+        onclick="setMobileView('list')"
+        class="py-1.5 rounded-lg text-stone-600 hover:text-stone-900 transition-all cursor-pointer"
+      >
+        일정만 보기
+      </button>
+      <button
+        id="mobileViewMapBtn"
+        onclick="setMobileView('map')"
+        class="py-1.5 rounded-lg text-stone-600 hover:text-stone-900 transition-all cursor-pointer"
+      >
+        지도만 보기
+      </button>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- 3. 메인 스플릿 워크스페이스 (좌측: 일자별 일정 / 우측: 인터랙티브 지도) -->
+  <!-- ===================================================================== -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-4 sm:py-6">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+      <!-- 좌측: 일자별 타임라인 및 일정 리스트 -->
+      <section id="itinerarySection" class="lg:col-span-6 space-y-4">
+        <!-- 선택된 날짜 헤더 & 일정 추가 버튼 -->
+        <div class="flex items-center justify-between bg-white p-4 rounded-2xl border border-stone-200/80 shadow-xs">
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 id="activeDayTitle" class="text-lg font-bold text-stone-900">Day 1</h2>
+              <span id="activeDayDateLabel" class="text-xs font-medium text-stone-500 bg-stone-100 px-2.5 py-0.5 rounded-full">
+                날짜 미정
+              </span>
+            </div>
+            <p id="activeDaySubtitle" class="text-xs text-stone-500 mt-0.5">
+              장소를 추가하면 오른쪽 지도에 동선이 자동으로 연결됩니다.
+            </p>
+          </div>
+          <button
+            onclick="openItemModal()"
+            class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-stone-900 hover:bg-rose-600 active:scale-95 text-white text-xs sm:text-sm font-semibold shadow-sm transition-all cursor-pointer"
+          >
+            <i data-lucide="plus-circle" class="w-4 h-4"></i>
+            <span>일정 추가</span>
+          </button>
+        </div>
+
+        <!-- 일자별 공용 하루 메모 (Day Note) -->
+        <div class="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-3.5">
+          <div class="flex items-center gap-1.5 text-xs font-bold text-amber-800 mb-1.5">
+            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-600"></i>
+            <span>오늘의 핵심 포인트 / 준비물 메모</span>
+          </div>
+          <input
+            id="dayHighlightInput"
+            type="text"
+            placeholder="예: 렌터카 픽업 10시! 일몰 시간(17:40) 맞춰서 해안도로 드라이브하기 🌅"
+            class="w-full text-xs sm:text-sm bg-white/80 px-3 py-2 rounded-xl border border-amber-200/70 text-stone-800 placeholder:text-stone-400 focus:outline-none focus:border-amber-400"
+          />
+        </div>
+
+        <!-- 타임라인 일정 카드 목록 -->
+        <div id="timelineContainer" class="space-y-3 pb-10">
+          <!-- JS로 동적 렌더링 -->
+        </div>
+      </section>
+
+      <!-- 우측: 구글 지도 / 기본 인터랙티브 지도 패널 -->
+      <section id="mapSection" class="lg:col-span-6 lg:sticky lg:top-[168px] space-y-3">
+        <div class="bg-white rounded-2xl border border-stone-200/80 shadow-sm overflow-hidden flex flex-col">
+          <!-- 지도 상단 검색 및 컨트롤 바 -->
+          <div class="p-3 border-b border-stone-100 bg-white space-y-2">
+            <div class="flex items-center gap-2">
+              <div class="relative flex-1">
+                <i data-lucide="search" class="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+                <input
+                  id="mapPlaceSearchInput"
+                  type="text"
+                  placeholder="장소 검색 후 바로 일정에 추가 (예: 성산일출봉, 협재해수욕장)"
+                  class="w-full pl-9 pr-3 py-2 text-xs sm:text-sm bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:bg-white focus:border-rose-500 transition-colors"
+                />
+              </div>
+              <button
+                onclick="handleQuickPlaceSearch()"
+                class="px-3.5 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs sm:text-sm font-semibold shrink-0 transition-colors cursor-pointer"
+              >
+                검색
+              </button>
+            </div>
+
+            <!-- 검색 결과 드롭다운 영역 -->
+            <div id="mapSearchResultsBox" class="hidden bg-stone-50 rounded-xl border border-stone-200 p-2 max-h-44 overflow-y-auto space-y-1">
+              <!-- 검색 결과 항목 표시 -->
+            </div>
+
+            <!-- 지도 상태 & 편의 기능 바 -->
+            <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
+              <div class="flex items-center gap-1.5">
+                <span id="mapEngineBadge" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+                  <i data-lucide="map" class="w-3 h-3"></i>
+                  <span>기본 지도 모드</span>
+                </span>
+                <button
+                  id="toggleMapClickAddBtn"
+                  onclick="toggleMapClickAddMode()"
+                  class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-medium border border-stone-200 bg-white hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 text-stone-700 transition-colors cursor-pointer"
+                >
+                  <i data-lucide="mouse-pointer-click" class="w-3.5 h-3.5"></i>
+                  <span>지도 클릭으로 장소 추가</span>
+                </button>
+              </div>
+
+              <div class="flex items-center gap-1.5">
+                <button
+                  onclick="fitMapToActiveDay()"
+                  class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-medium bg-stone-100 hover:bg-stone-200 text-stone-700 transition-colors cursor-pointer"
+                >
+                  <i data-lucide="maximize-2" class="w-3 h-3"></i>
+                  <span>전체 동선 보기</span>
+                </button>
+                <a
+                  id="openGoogleMapsRouteLink"
+                  href="https://www.google.com/maps"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-semibold bg-blue-50 hover:bg-blue-100 text-blue-700 transition-colors"
+                >
+                  <span>구글 지도 앱으로 열기</span>
+                  <i data-lucide="external-link" class="w-3 h-3"></i>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- 지도 캔버스 영역 -->
+          <div class="relative w-full h-[360px] sm:h-[440px] lg:h-[520px] bg-stone-100">
+            <!-- Leaflet 컨테이너 -->
+            <div id="leafletMapContainer" class="w-full h-full z-10"></div>
+            <!-- Google Maps 컨테이너 (API 키 연동 시 활성화) -->
+            <div id="googleMapContainer" class="w-full h-full hidden z-10"></div>
+
+            <!-- 지도 클릭 추가 모드 안내 플로팅 배너 -->
+            <div
+              id="mapClickGuideBanner"
+              class="hidden absolute top-3 left-1/2 -translate-x-1/2 z-20 bg-stone-900/90 text-white text-xs font-medium px-4 py-2 rounded-full shadow-lg flex items-center gap-2 whitespace-nowrap"
+            >
+              <span class="w-2 h-2 rounded-full bg-rose-400 animate-ping"></span>
+              <span>지도에서 원하는 위치를 클릭하면 새 일정이 생성됩니다!</span>
+              <button onclick="toggleMapClickAddMode(false)" class="text-rose-300 hover:text-white font-bold ml-1 cursor-pointer">취소</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- ===================================================================== -->
+  <!-- 4. 일정 추가 / 수정 모달 (Schedule Item Modal)                        -->
+  <!-- ===================================================================== -->
+  <div id="itemModal" class="hidden fixed inset-0 z-50 bg-stone-900/50 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl border border-stone-200 max-h-[92vh] flex flex-col animate-modal">
+      <!-- 모달 헤더 -->
+      <div class="flex items-center justify-between px-5 py-4 border-b border-stone-100">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+            <i data-lucide="map-pin-plus" class="w-4 h-4"></i>
+          </div>
+          <h3 id="itemModalTitle" class="text-base font-bold text-stone-900">새 일정 추가</h3>
+        </div>
+        <button onclick="closeItemModal()" class="p-1.5 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-100 cursor-pointer">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- 모달 폼 본문 -->
+      <div class="p-5 overflow-y-auto space-y-4">
+        <input type="hidden" id="editItemId" />
+
+        <!-- 시간 & 카테고리 -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-stone-700 mb-1">방문 시간</label>
+            <input
+              id="itemTimeInput"
+              type="time"
+              value="10:00"
+              class="w-full px-3 py-2.5 rounded-xl border border-stone-200 text-sm font-medium focus:outline-none focus:border-rose-500"
+            />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-stone-700 mb-1">카테고리</label>
+            <select
+              id="itemCategoryInput"
+              class="w-full px-3 py-2.5 rounded-xl border border-stone-200 text-sm font-medium bg-white focus:outline-none focus:border-rose-500"
+            >
+              <option value="관광지">📸 관광지 / 명소</option>
+              <option value="맛집">🍽️ 맛집 / 식사</option>
+              <option value="카페">☕ 카페 / 디저트</option>
+              <option value="숙소">🏨 숙소 / 체크인</option>
+              <option value="쇼핑">🛍️ 쇼핑 / 소품샵</option>
+              <option value="이동">🚗 이동 / 항공·렌트</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 장소명 & 위치 검색 -->
+        <div>
+          <label class="block text-xs font-bold text-stone-700 mb-1">장소명 *</label>
+          <div class="flex gap-2">
+            <input
+              id="itemPlaceInput"
+              type="text"
+              placeholder="예: 애월 카페거리, 우진해장국"
+              class="flex-1 px-3.5 py-2.5 rounded-xl border border-stone-200 text-sm font-medium focus:outline-none focus:border-rose-500"
+            />
+            <button
+              type="button"
+              onclick="geocodeModalPlace()"
+              class="px-3 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold shrink-0 transition-colors cursor-pointer"
+            >
+              좌표 찾기
+            </button>
+          </div>
+        </div>
+
+        <!-- 위도 / 경도 좌표 (지도 연동용) -->
+        <div class="bg-stone-50 p-3 rounded-2xl border border-stone-200/70 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-stone-600 flex items-center gap-1">
+              <i data-lucide="compass" class="w-3.5 h-3.5 text-rose-500"></i>
+              지도 좌표 (자동 입력 또는 직접 수정)
+            </span>
+            <span id="coordStatusText" class="text-[11px] text-stone-400">핀 표시용 좌표</span>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <input
+              id="itemLatInput"
+              type="number"
+              step="any"
+              placeholder="위도 (예: 33.4621)"
+              class="w-full px-3 py-1.5 rounded-lg border border-stone-200 bg-white text-xs text-stone-700 focus:outline-none focus:border-rose-500"
+            />
+            <input
+              id="itemLngInput"
+              type="number"
+              step="any"
+              placeholder="경도 (예: 126.3114)"
+              class="w-full px-3 py-1.5 rounded-lg border border-stone-200 bg-white text-xs text-stone-700 focus:outline-none focus:border-rose-500"
+            />
+          </div>
+        </div>
+
+        <!-- 상세 메모 -->
+        <div>
+          <label class="block text-xs font-bold text-stone-700 mb-1">커플 메모 · 예약 정보</label>
+          <textarea
+            id="itemMemoInput"
+            rows="3"
+            placeholder="예: 창가 자리 12시 예약 완료! 시그니처 메뉴 꼭 먹어보기 💕"
+            class="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-sm text-stone-800 focus:outline-none focus:border-rose-500 resize-none"
+          ></textarea>
+        </div>
+
+        <!-- 사진 첨부 (다중 업로드 + 자동 용량 압축) -->
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="text-xs font-bold text-stone-700">사진 첨부 (참고 사진 / 추억 기록)</label>
+            <span class="text-[11px] text-stone-400">자동 압축 최적화 지원</span>
+          </div>
+
+          <label class="flex flex-col items-center justify-center w-full py-3.5 px-4 border-2 border-dashed border-stone-300 hover:border-rose-400 bg-stone-50/70 hover:bg-rose-50/30 rounded-2xl cursor-pointer transition-colors">
+            <div class="flex items-center gap-2 text-xs font-semibold text-stone-600">
+              <i data-lucide="image-plus" class="w-4 h-4 text-rose-500"></i>
+              <span>클릭하여 사진 선택 (여러 장 가능)</span>
+            </div>
+            <input
+              id="itemPhotoInput"
+              type="file"
+              accept="image/*"
+              multiple
+              onchange="handlePhotoUpload(event)"
+              class="hidden"
+            />
+          </label>
+
+          <!-- 첨부된 사진 미리보기 그리드 -->
+          <div id="modalPhotoPreviewGrid" class="grid grid-cols-4 gap-2 mt-2.5">
+            <!-- JS로 썸네일 렌더링 -->
+          </div>
+        </div>
+      </div>
+
+      <!-- 모달 하단 버튼 -->
+      <div class="px-5 py-3.5 border-t border-stone-100 bg-stone-50/70 rounded-b-3xl flex items-center justify-end gap-2">
+        <button
+          onclick="closeItemModal()"
+          class="px-4 py-2.5 rounded-xl border border-stone-200 bg-white hover:bg-stone-100 text-stone-700 text-xs sm:text-sm font-semibold cursor-pointer"
+        >
+          취소
+        </button>
+        <button
+          onclick="saveScheduleItem()"
+          class="px-5 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs sm:text-sm font-semibold shadow-sm cursor-pointer"
+        >
+          일정 저장하기
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- 5. 공유 · 실시간 동기화 · API 설정 모달 (Share & Settings Modal)       -->
+  <!-- ===================================================================== -->
+  <div id="shareModal" class="hidden fixed inset-0 z-50 bg-stone-900/50 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-white w-full sm:max-w-xl rounded-t-3xl sm:rounded-3xl shadow-2xl border border-stone-200 max-h-[92vh] flex flex-col animate-modal">
+      <!-- 헤더 -->
+      <div class="flex items-center justify-between px-5 py-4 border-b border-stone-100">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+            <i data-lucide="users" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-stone-900">커플 공유 · 실시간 연동 · 설정</h3>
+            <p class="text-[11px] text-stone-500">여자친구와 일정을 실시간으로 함께 수정하거나 JSON으로 공유하세요.</p>
+          </div>
+        </div>
+        <button onclick="closeShareModal()" class="p-1.5 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-100 cursor-pointer">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- 탭 메뉴 -->
+      <div class="px-5 pt-3 border-b border-stone-100 flex gap-2">
+        <button
+          id="tabFirebaseBtn"
+          onclick="switchShareTab('firebase')"
+          class="pb-2.5 px-2 text-xs sm:text-sm font-bold border-b-2 border-rose-500 text-rose-600 cursor-pointer"
+        >
+          🔥 실시간 커플 동기화
+        </button>
+        <button
+          id="tabJsonBtn"
+          onclick="switchShareTab('json')"
+          class="pb-2.5 px-2 text-xs sm:text-sm font-semibold border-b-2 border-transparent text-stone-500 hover:text-stone-800 cursor-pointer"
+        >
+          📦 간편 코드·파일 공유
+        </button>
+        <button
+          id="tabApiGuideBtn"
+          onclick="switchShareTab('api')"
+          class="pb-2.5 px-2 text-xs sm:text-sm font-semibold border-b-2 border-transparent text-stone-500 hover:text-stone-800 cursor-pointer"
+        >
+          🗺️ 구글 지도 & GitHub 가이드
+        </button>
+      </div>
+
+      <!-- 탭 본문 -->
+      <div class="p-5 overflow-y-auto space-y-4">
+
+        <!-- [탭 1] Firebase Firestore 실시간 동기화 -->
+        <div id="shareTabFirebase" class="space-y-4">
+          <div class="bg-rose-50/70 border border-rose-200/70 rounded-2xl p-3.5 text-xs text-stone-700 space-y-1">
+            <p class="font-bold text-rose-700">💕 둘이 동시에 같은 화면을 수정하려면?</p>
+            <p>무료 Firebase Firestore 설정값과 동일한 <strong>커플 여행 방 코드</strong>를 양쪽 기기에서 입력하면, 일정·메모·사진이 실시간으로 자동 동기화됩니다.</p>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-stone-700 mb-1">1. 커플 여행 방 코드 (공유 ID)</label>
+            <div class="flex gap-2">
+              <input
+                id="firebaseTripIdInput"
+                type="text"
+                placeholder="예: LOVE-JEJU-2026"
+                class="flex-1 px-3.5 py-2.5 rounded-xl border border-stone-200 text-sm font-bold uppercase tracking-wider text-stone-800 focus:outline-none focus:border-rose-500"
+              />
+              <button
+                type="button"
+                onclick="generateRandomRoomCode()"
+                class="px-3 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold shrink-0 cursor-pointer"
+              >
+                코드 생성
+              </button>
+              <button
+                type="button"
+                onclick="copyRoomCode()"
+                class="px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold shrink-0 cursor-pointer"
+              >
+                복사
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-stone-700 mb-1">2. Firebase Config JSON (웹 앱 설정 객체)</label>
+            <textarea
+              id="firebaseConfigInput"
+              rows="5"
+              placeholder='{"apiKey": "AIzaSy...", "authDomain": "your-app.firebaseapp.com", "projectId": "your-app", "storageBucket": "...", "messagingSenderId": "...", "appId": "..."}'
+              class="w-full p-3 rounded-xl border border-stone-200 text-xs font-mono bg-stone-50 focus:bg-white focus:outline-none focus:border-rose-500"
+            ></textarea>
+          </div>
+
+          <div class="flex items-center justify-between pt-1">
+            <button
+              onclick="disconnectFirebase()"
+              class="px-3.5 py-2 rounded-xl border border-stone-200 text-xs font-semibold text-stone-600 hover:bg-stone-100 cursor-pointer"
+            >
+              연동 해제 (로컬 모드)
+            </button>
+            <button
+              onclick="connectFirebaseSync()"
+              class="px-5 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs sm:text-sm font-bold shadow-sm cursor-pointer"
+            >
+              실시간 동기화 연결하기
+            </button>
+          </div>
+        </div>
+
+        <!-- [탭 2] JSON 내보내기 / 가져오기 (백엔드 없이 즉시 공유) -->
+        <div id="shareTabJson" class="hidden space-y-4">
+          <div class="bg-stone-50 border border-stone-200 rounded-2xl p-3.5 text-xs text-stone-600 space-y-1">
+            <p class="font-bold text-stone-800">⚡ 별도 서버 설정 없이 카카오톡으로 바로 공유하기</p>
+            <p>현재 작성된 모든 일정, 메모, 압축된 사진 데이터를 코드로 복사하거나 파일(`.json`)로 저장해 상대방에게 보내세요.</p>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <button
+              onclick="copyTripJsonToClipboard()"
+              class="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs sm:text-sm font-semibold cursor-pointer"
+            >
+              <i data-lucide="copy" class="w-4 h-4"></i>
+              <span>여행 데이터 코드 복사</span>
+            </button>
+            <button
+              onclick="downloadTripJsonFile()"
+              class="flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-stone-300 bg-white hover:bg-stone-50 text-stone-800 text-xs sm:text-sm font-semibold cursor-pointer"
+            >
+              <i data-lucide="download" class="w-4 h-4"></i>
+              <span>백업 파일(.json) 다운로드</span>
+            </button>
+          </div>
+
+          <div class="border-t border-stone-200 pt-4 space-y-2">
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-bold text-stone-700">공유받은 여행 코드 또는 파일 불러오기</label>
+              <label class="text-xs font-semibold text-rose-600 hover:text-rose-700 cursor-pointer underline">
+                .json 파일 선택
+                <input type="file" accept=".json,application/json" onchange="importTripJsonFile(event)" class="hidden" />
+              </label>
+            </div>
+            <textarea
+              id="importJsonTextarea"
+              rows="4"
+              placeholder="상대방에게 받은 여행 데이터 JSON 코드를 여기에 붙여넣고 [일정 불러오기]를 누르세요."
+              class="w-full p-3 rounded-xl border border-stone-200 text-xs font-mono bg-stone-50 focus:bg-white focus:outline-none focus:border-rose-500"
+            ></textarea>
+            <button
+              onclick="importTripJsonFromText()"
+              class="w-full py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs sm:text-sm font-bold cursor-pointer"
+            >
+              붙여넣은 일정 불러오기
+            </button>
+          </div>
+        </div>
+
+        <!-- [탭 3] 구글 지도 API 키 설정 & GitHub Pages 배포 가이드 -->
+        <div id="shareTabApi" class="hidden space-y-4">
+          <div class="space-y-2">
+            <label class="block text-xs font-bold text-stone-700">Google Maps JavaScript API 키 (선택 사항)</label>
+            <p class="text-[11px] text-stone-500">
+              API 키를 입력하면 구글 지도 및 Google Places 장소 자동완성 검색이 활성화됩니다. (입력하지 않아도 기본 지도가 완벽하게 동작합니다.)
+            </p>
+            <div class="flex gap-2">
+              <input
+                id="googleMapsKeyInput"
+                type="password"
+                placeholder="AIzaSy..."
+                class="flex-1 px-3.5 py-2.5 rounded-xl border border-stone-200 text-sm font-mono focus:outline-none focus:border-rose-500"
+              />
+              <button
+                onclick="saveGoogleMapsApiKey()"
+                class="px-4 py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold shrink-0 cursor-pointer"
+              >
+                저장 및 적용
+              </button>
+            </div>
+          </div>
+
+          <!-- GitHub Pages 2분 배포 가이드 -->
+          <div class="bg-blue-50/70 border border-blue-200/80 rounded-2xl p-4 space-y-2 text-xs text-stone-700">
+            <div class="flex items-center gap-1.5 font-bold text-blue-800 text-sm">
+              <i data-lucide="github" class="w-4 h-4"></i>
+              <span>GitHub Pages로 무료 커플 사이트 배포하는 법</span>
+            </div>
+            <ol class="list-decimal list-inside space-y-1.5 leading-relaxed">
+              <li>GitHub에서 새 저장소(Repository)를 만듭니다 (예: <code class="bg-white px-1.5 py-0.5 rounded border">couple-trip</code>).</li>
+              <li>이 파일(<code class="bg-white px-1.5 py-0.5 rounded border">index.html</code>)을 저장소에 업로드(Commit)합니다.</li>
+              <li>저장소 상단 <strong>Settings → Pages</strong> 메뉴로 이동합니다.</li>
+              <li>Branch를 <code class="bg-white px-1.5 py-0.5 rounded border">main</code>으로 선택하고 <strong>Save</strong>를 누르면 1분 뒤 나만의 <code class="bg-white px-1.5 py-0.5 rounded border">https://아이디.github.io/couple-trip/</code> 주소가 생성됩니다!</li>
+            </ol>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- 6. 커스텀 확인 모달 (초기화 등 alert/confirm 대체용)                  -->
+  <!-- ===================================================================== -->
+  <div id="resetModal" class="hidden fixed inset-0 z-50 bg-stone-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl border border-stone-200 space-y-4 animate-modal">
+      <div class="w-11 h-11 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center">
+        <i data-lucide="sparkles" class="w-5 h-5"></i>
+      </div>
+      <div>
+        <h3 class="text-base font-bold text-stone-900">새 여행 일정을 시작할까요?</h3>
+        <p class="text-xs text-stone-500 mt-1 leading-relaxed">
+          현재 입력된 샘플/여행 일정이 비워지고 새로운 빈 여행 노트가 생성됩니다. (필요하다면 먼저 공유 메뉴에서 백업 파일을 다운로드하세요!)
+        </p>
+      </div>
+      <div class="flex gap-2 pt-1">
+        <button
+          onclick="closeResetModal()"
+          class="flex-1 py-2.5 rounded-xl border border-stone-200 text-xs font-semibold text-stone-700 hover:bg-stone-50 cursor-pointer"
+        >
+          취소
+        </button>
+        <button
+          onclick="confirmResetTrip()"
+          class="flex-1 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-xs font-bold text-white cursor-pointer"
+        >
+          새 여행 시작하기
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- 7. 사진 전체화면 라이트박스 모달 (Photo Lightbox)                      -->
+  <!-- ===================================================================== -->
+  <div id="lightboxModal" onclick="closeLightbox()" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-xs flex items-center justify-center p-4 cursor-zoom-out">
+    <button onclick="closeLightbox()" class="absolute top-4 right-4 p-2.5 rounded-full bg-white/15 hover:bg-white/25 text-white cursor-pointer">
+      <i data-lucide="x" class="w-6 h-6"></i>
+    </button>
+    <img id="lightboxImage" src="" alt="여행 첨부 사진 크게 보기" class="max-w-full max-h-[88vh] rounded-2xl shadow-2xl object-contain" />
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- 8. 토스트 알림 컨테이너                                                -->
+  <!-- ===================================================================== -->
+  <div id="toastContainer" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 pointer-events-none"></div>
+
+  <!-- ===================================================================== -->
+  <!-- 9. 애플리케이션 로직 (JavaScript)                                      -->
+  <!-- ===================================================================== -->
+  <script>
+    /**
+     * 카테고리별 디자인 토큰 (배지 색상, 지도 핀 색상, 아이콘)
+     */
+    const CATEGORY_META = {
+      '맛집': { badge: 'bg-orange-50 text-orange-700 border-orange-200', pinColor: '#f97316', icon: 'utensils' },
+      '카페': { badge: 'bg-amber-50 text-amber-800 border-amber-200', pinColor: '#d97706', icon: 'coffee' },
+      '관광지': { badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', pinColor: '#10b981', icon: 'camera' },
+      '숙소': { badge: 'bg-indigo-50 text-indigo-700 border-indigo-200', pinColor: '#6366f1', icon: 'bed-double' },
+      '쇼핑': { badge: 'bg-pink-50 text-pink-700 border-pink-200', pinColor: '#ec4899', icon: 'shopping-bag' },
+      '이동': { badge: 'bg-sky-50 text-sky-700 border-sky-200', pinColor: '#0284c7', icon: 'car' }
+    };
+
+    const STORAGE_KEY = 'couple_travel_planner_v1';
+    const SETTINGS_KEY = 'couple_travel_settings_v1';
+
+    /**
+     * 초기 샘플 여행 데이터 생성기 (앱 첫 실행 시 바로 테스트 가능하도록 구성)
+     */
+    function createInitialSampleTrip() {
+      const today = new Date();
+      const start = new Date(today);
+      start.setDate(today.getDate() + 7);
+      const end = new Date(start);
+      end.setDate(start.getDate() + 1);
+
+      const fmt = (d) => d.toISOString().split('T')[0];
+
+      return {
+        title: '우리 둘만의 제주도 1박 2일 힐링 여행 🍊',
+        destination: '제주도',
+        startDate: fmt(start),
+        endDate: fmt(end),
+        activeDayIndex: 0,
+        updatedAt: Date.now(),
+        days: [
+          {
+            highlight: '애월 해안도로 드라이브 & 오션뷰 카페에서 인생샷 남기기 📸',
+            items: [
+              {
+                id: 'item_sample_1',
+                time: '10:30',
+                place: '제주국제공항 & 렌터카 픽업',
+                category: '이동',
+                lat: 33.5066,
+                lng: 126.4929,
+                memo: '도착 후 셔틀버스 타고 렌터카 인수! 오션뷰 오픈카/SUV 체크하기.',
+                photos: []
+              },
+              {
+                id: 'item_sample_2',
+                time: '12:00',
+                place: '애월 해안도로 맛집 (자매국수 / 해물라면)',
+                category: '맛집',
+                lat: 33.4628,
+                lng: 126.3119,
+                memo: '점심 웨이팅 있을 수 있으니 테이블링 미리 확인하기!',
+                photos: []
+              },
+              {
+                id: 'item_sample_3',
+                time: '14:30',
+                place: '애월 카페거리 오션뷰 카페',
+                category: '카페',
+                lat: 33.4619,
+                lng: 126.3095,
+                memo: '노을 지기 전 테라스 자리에서 커플 사진 찍기 ☕💕',
+                photos: []
+              },
+              {
+                id: 'item_sample_4',
+                time: '18:00',
+                place: '협재 프라이빗 감성 숙소 체크인',
+                category: '숙소',
+                lat: 33.3941,
+                lng: 126.2397,
+                memo: '체크인 후 근처 흑돼지 맛집 저녁 식사 & 와인 한 잔!',
+                photos: []
+              }
+            ]
+          },
+          {
+            highlight: '성산일출봉 산책과 우도 땅콩 아이스크림 데이트 🍦',
+            items: [
+              {
+                id: 'item_sample_5',
+                time: '10:30',
+                place: '성산일출봉 & 광치기해변',
+                category: '관광지',
+                lat: 33.4581,
+                lng: 126.9425,
+                memo: '편한 운동화 필수! 유채꽃밭 배경으로 투샷 남기기.',
+                photos: []
+              },
+              {
+                id: 'item_sample_6',
+                time: '13:30',
+                place: '성산 전복돌솥밥 맛집',
+                category: '맛집',
+                lat: 33.4633,
+                lng: 126.9355,
+                memo: '고소한 전복내장밥 + 고등어구이 세트 추천.',
+                photos: []
+              },
+              {
+                id: 'item_sample_7',
+                time: '16:00',
+                place: '동문재래시장 기념품 쇼핑',
+                category: '쇼핑',
+                lat: 33.5126,
+                lng: 126.5284,
+                memo: '오메기떡, 한라봉 초콜릿, 커플 키링 선물 사기 🎁',
+                photos: []
+              }
+            ]
+          }
+        ]
+      };
+    }
+
+    // 전역 상태
+    let tripState = null;
+    let appSettings = {
+      googleMapsApiKey: '',
+      firebaseConfigStr: '',
+      firebaseTripId: ''
+    };
+
+    // 모달 임시 첨부 사진 배열
+    let modalTempPhotos = [];
+
+    // 지도 관련 인스턴스
+    let leafletMap = null;
+    let leafletMarkersLayer = null;
+    let leafletPolyline = null;
+    let googleMap = null;
+    let googleMarkers = [];
+    let googlePolyline = null;
+    let isGoogleMapsReady = false;
+    let isMapClickAddMode = false;
+
+    // Firebase 실시간 동기화 상태
+    let firebaseUnsubscribe = null;
+    let firebaseSaveTimeout = null;
+    let isApplyingRemoteUpdate = false;
+    let firestoreDbRef = null;
+    let firestoreDocFn = null;
+    let firestoreSetDocFn = null;
+
+    /**
+     * 초기화: 페이지 로드 시 실행
+     */
+    window.addEventListener('DOMContentLoaded', () => {
+      loadSettingsFromStorage();
+      loadTripFromStorage();
+      bindHeaderEvents();
+      initLeafletMap();
+      renderAll();
+
+      // 저장된 구글 지도 API 키가 있다면 자동 로드
+      if (appSettings.googleMapsApiKey) {
+        loadGoogleMapsScript(appSettings.googleMapsApiKey);
+      }
+
+      // 저장된 Firebase 연동 정보가 있다면 자동 연결
+      if (appSettings.firebaseConfigStr && appSettings.firebaseTripId) {
+        connectFirebaseSync(true);
+      }
+    });
+
+    /**
+     * 로컬스토리지에서 설정 및 여행 데이터 불러오기
+     */
+    function loadSettingsFromStorage() {
+      try {
+        const raw = localStorage.getItem(SETTINGS_KEY);
+        if (raw) {
+          appSettings = { ...appSettings, ...JSON.parse(raw) };
+        }
+      } catch (e) {
+        console.warn('설정 로드 실패:', e);
+      }
+    }
+
+    function saveSettingsToStorage() {
+      try {
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(appSettings));
+      } catch (e) {
+        console.warn('설정 저장 실패:', e);
+      }
+    }
+
+    function loadTripFromStorage() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          tripState = JSON.parse(raw);
+        } else {
+          tripState = createInitialSampleTrip();
+          saveTripToStorage(false);
+        }
+      } catch (e) {
+        tripState = createInitialSampleTrip();
+      }
+    }
+
+    /**
+     * 여행 데이터 저장 (LocalStorage + Firebase 실시간 동기화)
+     */
+    function saveTripToStorage(triggerRemoteSync = true) {
+      tripState.updatedAt = Date.now();
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(tripState));
+      } catch (e) {
+        showToast('저장 공간이 부족합니다. 일부 사진 용량을 줄여주세요.', 'error');
+      }
+
+      if (triggerRemoteSync && firestoreDbRef && !isApplyingRemoteUpdate) {
+        updateSyncBadge('syncing');
+        clearTimeout(firebaseSaveTimeout);
+        firebaseSaveTimeout = setTimeout(() => {
+          pushTripToFirebase();
+        }, 450);
+      }
+    }
+
+    /**
+     * 상단 헤더 인풋 이벤트 바인딩
+     */
+    function bindHeaderEvents() {
+      const titleInput = document.getElementById('tripTitleInput');
+      const destInput = document.getElementById('destinationInput');
+      const startInput = document.getElementById('startDateInput');
+      const endInput = document.getElementById('endDateInput');
+      const dayHighlightInput = document.getElementById('dayHighlightInput');
+      const mapSearchInput = document.getElementById('mapPlaceSearchInput');
+
+      titleInput.addEventListener('input', (e) => {
+        tripState.title = e.target.value;
+        saveTripToStorage();
+      });
+
+      destInput.addEventListener('input', (e) => {
+        tripState.destination = e.target.value;
+        saveTripToStorage();
+      });
+
+      destInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') searchDestinationOnMap();
+      });
+
+      startInput.addEventListener('change', (e) => {
+        tripState.startDate = e.target.value;
+        if (tripState.endDate && tripState.endDate < tripState.startDate) {
+          tripState.endDate = tripState.startDate;
+        }
+        syncDaysWithDateRange();
+        saveTripToStorage();
+        renderAll();
+      });
+
+      endInput.addEventListener('change', (e) => {
+        tripState.endDate = e.target.value;
+        if (tripState.startDate && tripState.endDate < tripState.startDate) {
+          tripState.startDate = tripState.endDate;
+        }
+        syncDaysWithDateRange();
+        saveTripToStorage();
+        renderAll();
+      });
+
+      dayHighlightInput.addEventListener('input', (e) => {
+        const day = tripState.days[tripState.activeDayIndex];
+        if (day) {
+          day.highlight = e.target.value;
+          saveTripToStorage();
+        }
+      });
+
+      mapSearchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') handleQuickPlaceSearch();
+      });
+    }
+
+    /**
+     * 시작일~종료일 날짜 범위에 맞춰 일자 배열(days) 자동 생성/조정
+     */
+    function syncDaysWithDateRange() {
+      if (!tripState.startDate || !tripState.endDate) return;
+
+      const start = new Date(tripState.startDate + 'T00:00:00');
+      const end = new Date(tripState.endDate + 'T00:00:00');
+      const diffTime = end.getTime() - start.getTime();
+      const totalDays = Math.max(1, Math.min(30, Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1));
+
+      while (tripState.days.length < totalDays) {
+        tripState.days.push({ highlight: '', items: [] });
+      }
+      if (tripState.days.length > totalDays) {
+        tripState.days = tripState.days.slice(0, totalDays);
+      }
+      if (tripState.activeDayIndex >= tripState.days.length) {
+        tripState.activeDayIndex = Math.max(0, tripState.days.length - 1);
+      }
+    }
+
+    /**
+     * 날짜 +1일 빠른 추가
+     */
+    function addOneMoreDay() {
+      tripState.days.push({ highlight: '', items: [] });
+      if (tripState.startDate) {
+        const start = new Date(tripState.startDate + 'T00:00:00');
+        start.setDate(start.getDate() + tripState.days.length - 1);
+        tripState.endDate = start.toISOString().split('T')[0];
+      }
+      tripState.activeDayIndex = tripState.days.length - 1;
+      saveTripToStorage();
+      renderAll();
+      showToast(`Day ${tripState.days.length} 일정이 추가되었습니다!`);
+    }
+
+    /**
+     * 날짜 포맷 헬퍼 (예: "11.20 (금)")
+     */
+    function getFormattedDayDate(dayIndex) {
+      if (!tripState.startDate) return '';
+      const d = new Date(tripState.startDate + 'T00:00:00');
+      d.setDate(d.getDate() + dayIndex);
+      const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${month}.${day} (${weekdays[d.getDay()]})`;
+    }
+
+    /**
+     * 전체 UI 렌더링
+     */
+    function renderAll() {
+      renderHeader();
+      renderDayTabs();
+      renderTimeline();
+      renderMapMarkersAndRoute();
+      if (window.lucide) {
+        lucide.createIcons();
+      }
+    }
+
+    /**
+     * 상단 여행 헤더 정보 렌더링
+     */
+    function renderHeader() {
+      document.getElementById('tripTitleInput').value = tripState.title || '';
+      document.getElementById('destinationInput').value = tripState.destination || '';
+      document.getElementById('startDateInput').value = tripState.startDate || '';
+      document.getElementById('endDateInput').value = tripState.endDate || '';
+
+      // D-Day 계산
+      const dDayBadge = document.getElementById('dDayBadge');
+      if (tripState.startDate) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const start = new Date(tripState.startDate + 'T00:00:00');
+        const end = tripState.endDate ? new Date(tripState.endDate + 'T00:00:00') : start;
+        const diffDays = Math.round((start - today) / (1000 * 60 * 60 * 24));
+
+        if (diffDays > 0) {
+          dDayBadge.textContent = `D-${diffDays} 설레는 여행 전 💕`;
+          dDayBadge.className = 'inline-flex items-center px-2.5 py-1 rounded-xl text-xs font-bold bg-rose-100 text-rose-700';
+        } else if (today >= start && today <= end) {
+          dDayBadge.textContent = `여행 중! 행복한 시간 ✨`;
+          dDayBadge.className = 'inline-flex items-center px-2.5 py-1 rounded-xl text-xs font-bold bg-emerald-100 text-emerald-700';
+        } else {
+          dDayBadge.textContent = `추억 저장 완료 📸`;
+          dDayBadge.className = 'inline-flex items-center px-2.5 py-1 rounded-xl text-xs font-bold bg-stone-200 text-stone-700';
+        }
+      } else {
+        dDayBadge.textContent = '날짜 선택';
+      }
+
+      // 전체 장소 개수 요약
+      const totalItems = tripState.days.reduce((acc, d) => acc + (d.items ? d.items.length : 0), 0);
+      document.getElementById('tripSummaryBadge').textContent = `${tripState.days.length}일 · 총 ${totalItems}곳`;
+    }
+
+    /**
+     * 일자별 탭 렌더링
+     */
+    function renderDayTabs() {
+      const container = document.getElementById('dayTabsContainer');
+      container.innerHTML = '';
+
+      tripState.days.forEach((day, idx) => {
+        const isActive = idx === tripState.activeDayIndex;
+        const dateStr = getFormattedDayDate(idx);
+        const count = day.items ? day.items.length : 0;
+
+        const btn = document.createElement('button');
+        btn.onclick = () => {
+          tripState.activeDayIndex = idx;
+          saveTripToStorage(false);
+          renderAll();
+        };
+        btn.className = isActive
+          ? 'shrink-0 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-rose-500 text-white text-xs sm:text-sm font-bold shadow-xs transition-all cursor-pointer'
+          : 'shrink-0 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200/80 text-stone-700 text-xs sm:text-sm font-medium transition-all cursor-pointer';
+
+        btn.innerHTML = `
+          <span>Day ${idx + 1}</span>
+          ${dateStr ? `<span class="text-[11px] opacity-85 font-normal">${dateStr}</span>` : ''}
+          <span class="px-1.5 py-0.2 rounded-full text-[10px] ${isActive ? 'bg-white/25 text-white' : 'bg-white text-stone-500'}">${count}</span>
+        `;
+        container.appendChild(btn);
+      });
+    }
+
+    /**
+     * 활성화된 날짜의 타임라인 일정 리스트 렌더링
+     */
+    function renderTimeline() {
+      const activeDay = tripState.days[tripState.activeDayIndex] || { highlight: '', items: [] };
+      const dateStr = getFormattedDayDate(tripState.activeDayIndex);
+
+      document.getElementById('activeDayTitle').textContent = `Day ${tripState.activeDayIndex + 1}`;
+      document.getElementById('activeDayDateLabel').textContent = dateStr || '날짜 미지정';
+      document.getElementById('dayHighlightInput').value = activeDay.highlight || '';
+
+      const container = document.getElementById('timelineContainer');
+      container.innerHTML = '';
+
+      if (!activeDay.items || activeDay.items.length === 0) {
+        container.innerHTML = `
+          <div class="bg-white border border-dashed border-stone-300 rounded-3xl p-8 text-center space-y-3">
+            <div class="w-12 h-12 rounded-2xl bg-rose-50 text-rose-500 flex items-center justify-center mx-auto">
+              <i data-lucide="map-pin" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <h3 class="text-sm font-bold text-stone-800">아직 등록된 일정이 없어요</h3>
+              <p class="text-xs text-stone-500 mt-1">상단의 <strong>[일정 추가]</strong> 버튼을 누르거나 오른쪽 지도를 클릭해 첫 번째 장소를 추가해보세요!</p>
+            </div>
+            <button
+              onclick="openItemModal()"
+              class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-semibold cursor-pointer"
+            >
+              <i data-lucide="plus" class="w-4 h-4"></i>
+              <span>첫 일정 추가하기</span>
+            </button>
+          </div>
+        `;
+        return;
+      }
+
+      activeDay.items.forEach((item, index) => {
+        const meta = CATEGORY_META[item.category] || CATEGORY_META['관광지'];
+        const hasCoords = typeof item.lat === 'number' && typeof item.lng === 'number' && !isNaN(item.lat) && !isNaN(item.lng);
+        const googleMapsUrl = hasCoords
+          ? `https://www.google.com/maps/search/?api=1&query=${item.lat},${item.lng}`
+          : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((tripState.destination ? tripState.destination + ' ' : '') + item.place)}`;
+
+        const photosHtml = (item.photos && item.photos.length > 0)
+          ? `
+            <div class="grid grid-cols-3 sm:grid-cols-4 gap-2 mt-3 pt-3 border-t border-stone-100">
+              ${item.photos.map((src) => `
+                <button
+                  type="button"
+                  onclick="openLightbox('${src}')"
+                  class="group relative aspect-square rounded-xl overflow-hidden bg-stone-100 border border-stone-200/60 cursor-zoom-in"
+                >
+                  <img src="${src}" alt="첨부 사진" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" />
+                </button>
+              `).join('')}
+            </div>
+          `
+          : '';
+
+        const card = document.createElement('div');
+        card.className = 'relative bg-white rounded-2xl border border-stone-200/80 p-4 shadow-xs hover:shadow-md transition-all';
+        card.innerHTML = `
+          <div class="flex items-start gap-3">
+            <!-- 순서 번호 핀 (지도 마커 번호와 1:1 매칭) -->
+            <button
+              type="button"
+              onclick="focusMapOnItem(${index})"
+              title="지도에서 위치 보기"
+              style="background-color: ${meta.pinColor};"
+              class="w-8 h-8 rounded-full text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-xs hover:scale-110 transition-transform cursor-pointer mt-0.5"
+            >
+              ${index + 1}
+            </button>
+
+            <div class="flex-1 min-w-0">
+              <!-- 상단 메타: 시간 + 카테고리 + 순서이동/수정/삭제 -->
+              <div class="flex items-center justify-between gap-2 flex-wrap">
+                <div class="flex items-center gap-2">
+                  <span class="text-xs font-bold text-stone-500 bg-stone-100 px-2 py-0.5 rounded-lg">${item.time || '--:--'}</span>
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-semibold border ${meta.badge}">
+                    <i data-lucide="${meta.icon}" class="w-3 h-3"></i>
+                    <span>${item.category}</span>
+                  </span>
+                </div>
+
+                <!-- 카드 액션 버튼 모음 -->
+                <div class="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onclick="moveScheduleItem(${index}, -1)"
+                    ${index === 0 ? 'disabled' : ''}
+                    title="위로 이동"
+                    class="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 disabled:opacity-30 cursor-pointer"
+                  >
+                    <i data-lucide="chevron-up" class="w-3.5 h-3.5"></i>
+                  </button>
+                  <button
+                    type="button"
+                    onclick="moveScheduleItem(${index}, 1)"
+                    ${index === activeDay.items.length - 1 ? 'disabled' : ''}
+                    title="아래로 이동"
+                    class="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 disabled:opacity-30 cursor-pointer"
+                  >
+                    <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
+                  </button>
+                  <button
+                    type="button"
+                    onclick="openItemModal('${item.id}')"
+                    title="수정"
+                    class="p-1.5 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer"
+                  >
+                    <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+                  </button>
+                  <button
+                    type="button"
+                    onclick="deleteScheduleItem('${item.id}')"
+                    title="삭제"
+                    class="p-1.5 rounded-lg text-stone-400 hover:text-red-600 hover:bg-red-50 cursor-pointer"
+                  >
+                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- 장소명 & 구글 지도 외부 링크 -->
+              <div class="mt-1.5 flex items-center justify-between gap-2">
+                <h4
+                  onclick="focusMapOnItem(${index})"
+                  class="text-base font-bold text-stone-900 hover:text-rose-600 cursor-pointer truncate"
+                >
+                  ${escapeHtml(item.place)}
+                </h4>
+                <a
+                  href="${googleMapsUrl}"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-700 bg-blue-50/80 hover:bg-blue-100 px-2 py-1 rounded-lg transition-colors"
+                >
+                  <span>구글 지도</span>
+                  <i data-lucide="external-link" class="w-3 h-3"></i>
+                </a>
+              </div>
+
+              <!-- 메모 표시 -->
+              ${item.memo ? `
+                <p class="mt-2 text-xs sm:text-sm text-stone-600 bg-stone-50/90 px-3 py-2 rounded-xl border border-stone-100 whitespace-pre-line leading-relaxed">${escapeHtml(item.memo)}</p>
+              ` : ''}
+
+              <!-- 첨부 사진 썸네일 그리드 -->
+              ${photosHtml}
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    /**
+     * HTML 이스케이프 보안 유틸
+     */
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    /* ===================================================================== */
+    /* 일정 CRUD (추가, 수정, 삭제, 순서 변경) 및 사진 압축 업로드            */
+    /* ===================================================================== */
+
+    function openItemModal(editId = null, prefillCoords = null, prefillPlace = '') {
+      const modal = document.getElementById('itemModal');
+      const titleEl = document.getElementById('itemModalTitle');
+      const editIdInput = document.getElementById('editItemId');
+      const timeInput = document.getElementById('itemTimeInput');
+      const catInput = document.getElementById('itemCategoryInput');
+      const placeInput = document.getElementById('itemPlaceInput');
+      const latInput = document.getElementById('itemLatInput');
+      const lngInput = document.getElementById('itemLngInput');
+      const memoInput = document.getElementById('itemMemoInput');
+
+      const activeDay = tripState.days[tripState.activeDayIndex];
+
+      if (editId) {
+        const existing = activeDay.items.find((i) => i.id === editId);
+        if (!existing) return;
+        titleEl.textContent = '일정 수정하기';
+        editIdInput.value = existing.id;
+        timeInput.value = existing.time || '12:00';
+        catInput.value = existing.category || '관광지';
+        placeInput.value = existing.place || '';
+        latInput.value = existing.lat ?? '';
+        lngInput.value = existing.lng ?? '';
+        memoInput.value = existing.memo || '';
+        modalTempPhotos = [...(existing.photos || [])];
+      } else {
+        titleEl.textContent = `Day ${tripState.activeDayIndex + 1} 새 일정 추가`;
+        editIdInput.value = '';
+        // 직전 일정 시간 + 2시간 자동 제안
+        const lastItem = activeDay.items[activeDay.items.length - 1];
+        timeInput.value = lastItem && lastItem.time ? suggestNextTime(lastItem.time) : '10:00';
+        catInput.value = '관광지';
+        placeInput.value = prefillPlace || '';
+        latInput.value = prefillCoords ? prefillCoords.lat.toFixed(5) : '';
+        lngInput.value = prefillCoords ? prefillCoords.lng.toFixed(5) : '';
+        memoInput.value = '';
+        modalTempPhotos = [];
+      }
+
+      renderModalPhotoPreviews();
+      modal.classList.remove('hidden');
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function closeItemModal() {
+      document.getElementById('itemModal').classList.add('hidden');
+    }
+
+    function suggestNextTime(timeStr) {
+      const [h, m] = timeStr.split(':').map(Number);
+      if (isNaN(h)) return '12:00';
+      const nextH = Math.min(23, h + 2);
+      return `${String(nextH).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}`;
+    }
+
+    /**
+     * 다중 이미지 업로드 및 클라이언트 사이드 Canvas 압축 (가벼운 용량 유지)
+     */
+    async function handlePhotoUpload(event) {
+      const files = Array.from(event.target.files || []);
+      if (files.length === 0) return;
+
+      showToast(`사진 ${files.length}장을 최적화하여 첨부하는 중...`);
+
+      for (const file of files) {
+        try {
+          const compressedDataUrl = await compressImageFile(file, 800, 0.72);
+          modalTempPhotos.push(compressedDataUrl);
+        } catch (err) {
+          console.error('이미지 압축 오류:', err);
+        }
+      }
+
+      event.target.value = '';
+      renderModalPhotoPreviews();
+    }
+
+    function compressImageFile(file, maxDim = 800, quality = 0.72) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            let width = img.width;
+            let height = img.height;
+            if (width > maxDim || height > maxDim) {
+              if (width > height) {
+                height = Math.round((height * maxDim) / width);
+                width = maxDim;
+              } else {
+                width = Math.round((width * maxDim) / height);
+                height = maxDim;
+              }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', quality));
+          };
+          img.onerror = reject;
+          img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function renderModalPhotoPreviews() {
+      const grid = document.getElementById('modalPhotoPreviewGrid');
+      grid.innerHTML = '';
+
+      modalTempPhotos.forEach((src, idx) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'relative aspect-square rounded-xl overflow-hidden border border-stone-200 bg-stone-100';
+        wrap.innerHTML = `
+          <img src="${src}" class="w-full h-full object-cover" />
+          <button
+            type="button"
+            onclick="removeModalPhoto(${idx})"
+            class="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-white flex items-center justify-center text-xs hover:bg-red-600 cursor-pointer"
+          >
+            ×
+          </button>
+        `;
+        grid.appendChild(wrap);
+      });
+    }
+
+    function removeModalPhoto(idx) {
+      modalTempPhotos.splice(idx, 1);
+      renderModalPhotoPreviews();
+    }
+
+    /**
+     * 모달에서 장소명 기준 좌표 자동 검색
+     */
+    async function geocodeModalPlace() {
+      const place = document.getElementById('itemPlaceInput').value.trim();
+      if (!place) {
+        showToast('먼저 장소명을 입력해주세요!', 'error');
+        return;
+      }
+      const query = tripState.destination ? `${tripState.destination} ${place}` : place;
+      const results = await searchPlacesAPI(query);
+      if (results && results.length > 0) {
+        document.getElementById('itemLatInput').value = results[0].lat.toFixed(5);
+        document.getElementById('itemLngInput').value = results[0].lng.toFixed(5);
+        showToast(`좌표를 찾았습니다: ${results[0].name}`);
+      } else {
+        showToast('일치하는 좌표를 찾지 못했습니다. 지도에서 직접 클릭해도 됩니다.', 'error');
+      }
+    }
+
+    /**
+     * 일정 저장 (신규 추가 또는 기존 수정)
+     */
+    async function saveScheduleItem() {
+      const editId = document.getElementById('editItemId').value;
+      const time = document.getElementById('itemTimeInput').value || '10:00';
+      const category = document.getElementById('itemCategoryInput').value;
+      const place = document.getElementById('itemPlaceInput').value.trim();
+      let lat = parseFloat(document.getElementById('itemLatInput').value);
+      let lng = parseFloat(document.getElementById('itemLngInput').value);
+      const memo = document.getElementById('itemMemoInput').value.trim();
+
+      if (!place) {
+        showToast('장소명을 입력해주세요!', 'error');
+        return;
+      }
+
+      // 좌표가 비어있다면 자동으로 한 번 검색 시도
+      if (isNaN(lat) || isNaN(lng)) {
+        const query = tripState.destination ? `${tripState.destination} ${place}` : place;
+        const found = await searchPlacesAPI(query);
+        if (found && found.length > 0) {
+          lat = found[0].lat;
+          lng = found[0].lng;
+        } else {
+          lat = null;
+          lng = null;
+        }
+      }
+
+      const activeDay = tripState.days[tripState.activeDayIndex];
+
+      if (editId) {
+        const idx = activeDay.items.findIndex((i) => i.id === editId);
+        if (idx !== -1) {
+          activeDay.items[idx] = {
+            ...activeDay.items[idx],
+            time,
+            category,
+            place,
+            lat,
+            lng,
+            memo,
+            photos: [...modalTempPhotos]
+          };
+        }
+        showToast('일정이 수정되었습니다 ✨');
+      } else {
+        activeDay.items.push({
+          id: 'item_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+          time,
+          category,
+          place,
+          lat,
+          lng,
+          memo,
+          photos: [...modalTempPhotos]
+        });
+        showToast('새 일정이 추가되었습니다 💕');
+      }
+
+      closeItemModal();
+      saveTripToStorage();
+      renderAll();
+    }
+
+    function deleteScheduleItem(itemId) {
+      const activeDay = tripState.days[tripState.activeDayIndex];
+      activeDay.items = activeDay.items.filter((i) => i.id !== itemId);
+      saveTripToStorage();
+      renderAll();
+      showToast('일정이 삭제되었습니다.');
+    }
+
+    function moveScheduleItem(index, direction) {
+      const activeDay = tripState.days[tripState.activeDayIndex];
+      const targetIndex = index + direction;
+      if (targetIndex < 0 || targetIndex >= activeDay.items.length) return;
+
+      const temp = activeDay.items[index];
+      activeDay.items[index] = activeDay.items[targetIndex];
+      activeDay.items[targetIndex] = temp;
+
+      saveTripToStorage();
+      renderAll();
+    }
+
+    /* ===================================================================== */
+    /* 지도 엔진 (Leaflet 기본 지도 + Google Maps API 선택적 업그레이드)      */
+    /* ===================================================================== */
+
+    function initLeafletMap() {
+      leafletMap = L.map('leafletMapContainer', {
+        zoomControl: true
+      }).setView([33.45, 126.57], 10);
+
+      // 깔끔한 파스텔 톤 지도 타일 (CartoDB Voyager)
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap &copy; CARTO',
+        subdomains: 'abcd',
+        maxZoom: 19
+      }).addTo(leafletMap);
+
+      leafletMarkersLayer = L.layerGroup().addTo(leafletMap);
+
+      // 지도 클릭으로 일정 추가 이벤트
+      leafletMap.on('click', (e) => {
+        if (!isMapClickAddMode) return;
+        toggleMapClickAddMode(false);
+        openItemModal(null, { lat: e.latlng.lat, lng: e.latlng.lng }, '선택한 위치');
+      });
+    }
+
+    /**
+     * Google Maps JavaScript API 동적 로드 (API 키 입력 시)
+     */
+    function loadGoogleMapsScript(apiKey) {
+      if (!apiKey) return;
+      if (window.google && window.google.maps) {
+        initGoogleMapInstance();
+        return;
+      }
+
+      window.gm_authFailure = () => {
+        showToast('Google Maps API 키 인증에 실패하여 기본 지도로 전환됩니다.', 'error');
+        isGoogleMapsReady = false;
+        document.getElementById('googleMapContainer').classList.add('hidden');
+        document.getElementById('leafletMapContainer').classList.remove('hidden');
+        updateMapEngineBadge(false);
+      };
+
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=places&language=ko&region=KR&callback=initGoogleMapInstance`;
+      script.async = true;
+      script.defer = true;
+      script.onerror = () => {
+        showToast('Google Maps 스크립트를 불러오지 못했습니다. 기본 지도를 사용합니다.', 'error');
+      };
+      document.head.appendChild(script);
+    }
+
+    window.initGoogleMapInstance = function () {
+      try {
+        document.getElementById('leafletMapContainer').classList.add('hidden');
+        const gContainer = document.getElementById('googleMapContainer');
+        gContainer.classList.remove('hidden');
+
+        googleMap = new google.maps.Map(gContainer, {
+          center: { lat: 33.45, lng: 126.57 },
+          zoom: 10,
+          mapTypeControl: false,
+          streetViewControl: false,
+          fullscreenControl: true
+        });
+
+        googleMap.addListener('click', (e) => {
+          if (!isMapClickAddMode) return;
+          toggleMapClickAddMode(false);
+          openItemModal(null, { lat: e.latLng.lat(), lng: e.latLng.lng() }, '구글 지도 선택 위치');
+        });
+
+        // Google Places 자동완성 연결
+        const searchInput = document.getElementById('mapPlaceSearchInput');
+        const autocomplete = new google.maps.places.Autocomplete(searchInput);
+        autocomplete.addListener('place_changed', () => {
+          const place = autocomplete.getPlace();
+          if (place && place.geometry && place.geometry.location) {
+            const lat = place.geometry.location.lat();
+            const lng = place.geometry.location.lng();
+            openItemModal(null, { lat, lng }, place.name || searchInput.value);
+            searchInput.value = '';
+          }
+        });
+
+        isGoogleMapsReady = true;
+        updateMapEngineBadge(true);
+        renderMapMarkersAndRoute();
+        showToast('Google Maps API 연동이 완료되었습니다! 🗺️');
+      } catch (err) {
+        console.error('Google Map 초기화 오류:', err);
+      }
+    };
+
+    function updateMapEngineBadge(isGoogle) {
+      const badge = document.getElementById('mapEngineBadge');
+      if (isGoogle) {
+        badge.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-semibold bg-blue-50 text-blue-700 border border-blue-200/70';
+        badge.innerHTML = `<i data-lucide="map-pin" class="w-3 h-3"></i><span>Google Maps 연동됨</span>`;
+      } else {
+        badge.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60';
+        badge.innerHTML = `<i data-lucide="map" class="w-3 h-3"></i><span>기본 지도 모드</span>`;
+      }
+      if (window.lucide) lucide.createIcons();
+    }
+
+    /**
+     * 활성 날짜의 마커(1, 2, 3...) 및 이동 동선 Polyline 그리기
+     */
+    function renderMapMarkersAndRoute() {
+      const activeDay = tripState.days[tripState.activeDayIndex] || { items: [] };
+      const validPoints = [];
+
+      activeDay.items.forEach((item, idx) => {
+        if (typeof item.lat === 'number' && typeof item.lng === 'number' && !isNaN(item.lat) && !isNaN(item.lng)) {
+          validPoints.push({ item, idx, lat: item.lat, lng: item.lng });
+        }
+      });
+
+      // 상단 "구글 지도 앱으로 열기" 다중 경유지 동선 URL 업데이트
+      const routeLink = document.getElementById('openGoogleMapsRouteLink');
+      if (validPoints.length >= 2) {
+        const origin = `${validPoints[0].lat},${validPoints[0].lng}`;
+        const dest = `${validPoints[validPoints.length - 1].lat},${validPoints[validPoints.length - 1].lng}`;
+        const waypoints = validPoints.slice(1, -1).map((p) => `${p.lat},${p.lng}`).join('|');
+        routeLink.href = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}${waypoints ? `&waypoints=${encodeURIComponent(waypoints)}` : ''}`;
+      } else if (validPoints.length === 1) {
+        routeLink.href = `https://www.google.com/maps/search/?api=1&query=${validPoints[0].lat},${validPoints[0].lng}`;
+      } else {
+        routeLink.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(tripState.destination || '대한민국')}`;
+      }
+
+      // 1) Google Maps 렌더링
+      if (isGoogleMapsReady && googleMap) {
+        googleMarkers.forEach((m) => m.setMap(null));
+        googleMarkers = [];
+        if (googlePolyline) {
+          googlePolyline.setMap(null);
+          googlePolyline = null;
+        }
+
+        const bounds = new google.maps.LatLngBounds();
+        const pathCoords = [];
+
+        validPoints.forEach((pt) => {
+          const meta = CATEGORY_META[pt.item.category] || CATEGORY_META['관광지'];
+          const pos = { lat: pt.lat, lng: pt.lng };
+          pathCoords.push(pos);
+          bounds.extend(pos);
+
+          const marker = new google.maps.Marker({
+            position: pos,
+            map: googleMap,
+            label: {
+              text: String(pt.idx + 1),
+              color: '#ffffff',
+              fontWeight: 'bold',
+              fontSize: '12px'
+            },
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 15,
+              fillColor: meta.pinColor,
+              fillOpacity: 1,
+              strokeColor: '#ffffff',
+              strokeWeight: 2.5
+            },
+            title: `${pt.idx + 1}. ${pt.item.place}`
+          });
+
+          const infoWindow = new google.maps.InfoWindow({
+            content: `<div style="font-family:sans-serif;padding:4px;"><strong>${pt.idx + 1}. ${escapeHtml(pt.item.place)}</strong><br/><span style="font-size:12px;color:#666;">${pt.item.time} · ${pt.item.category}</span></div>`
+          });
+          marker.addListener('click', () => infoWindow.open(googleMap, marker));
+          googleMarkers.push(marker);
+        });
+
+        if (pathCoords.length > 1) {
+          googlePolyline = new google.maps.Polyline({
+            path: pathCoords,
+            geodesic: true,
+            strokeColor: '#f43f5e',
+            strokeOpacity: 0.85,
+            strokeWeight: 3.5,
+            map: googleMap
+          });
+        }
+
+        if (validPoints.length > 0) {
+          googleMap.fitBounds(bounds);
+          if (validPoints.length === 1) googleMap.setZoom(14);
+        }
+        return;
+      }
+
+      // 2) Leaflet 기본 지도 렌더링
+      if (!leafletMap || !leafletMarkersLayer) return;
+      leafletMarkersLayer.clearLayers();
+      if (leafletPolyline) {
+        leafletMap.removeLayer(leafletPolyline);
+        leafletPolyline = null;
+      }
+
+      const latLngs = [];
+
+      validPoints.forEach((pt) => {
+        const meta = CATEGORY_META[pt.item.category] || CATEGORY_META['관광지'];
+        latLngs.push([pt.lat, pt.lng]);
+
+        const icon = L.divIcon({
+          className: 'custom-leaflet-pin',
+          html: `<div class="pin-badge" style="background-color:${meta.pinColor};">${pt.idx + 1}</div>`,
+          iconSize: [32, 32],
+          iconAnchor: [16, 16]
+        });
+
+        const marker = L.marker([pt.lat, pt.lng], { icon }).addTo(leafletMarkersLayer);
+        marker.bindPopup(`
+          <div class="text-xs font-sans space-y-1">
+            <div class="font-bold text-stone-900">${pt.idx + 1}. ${escapeHtml(pt.item.place)}</div>
+            <div class="text-stone-500">${pt.item.time} · ${pt.item.category}</div>
+            <a href="https://www.google.com/maps/search/?api=1&query=${pt.lat},${pt.lng}" target="_blank" class="inline-block text-blue-600 font-semibold underline mt-1">구글 지도로 열기 ↗</a>
+          </div>
+        `);
+      });
+
+      if (latLngs.length > 1) {
+        leafletPolyline = L.polyline(latLngs, {
+          color: '#f43f5e',
+          weight: 3.5,
+          opacity: 0.85,
+          dashArray: '6, 6'
+        }).addTo(leafletMap);
+      }
+
+      if (latLngs.length > 0) {
+        const bounds = L.latLngBounds(latLngs);
+        leafletMap.fitBounds(bounds, { padding: [45, 45], maxZoom: 14 });
+      }
+    }
+
+    function fitMapToActiveDay() {
+      renderMapMarkersAndRoute();
+    }
+
+    function focusMapOnItem(index) {
+      const activeDay = tripState.days[tripState.activeDayIndex];
+      const item = activeDay.items[index];
+      if (!item || typeof item.lat !== 'number' || typeof item.lng !== 'number') {
+        showToast('이 일정에는 아직 지도 좌표가 없습니다. [수정]에서 좌표를 찾아보세요!');
+        return;
+      }
+
+      if (isGoogleMapsReady && googleMap) {
+        googleMap.panTo({ lat: item.lat, lng: item.lng });
+        googleMap.setZoom(15);
+      } else if (leafletMap) {
+        leafletMap.setView([item.lat, item.lng], 15, { animate: true });
+      }
+    }
+
+    function toggleMapClickAddMode(forceState = null) {
+      isMapClickAddMode = forceState !== null ? forceState : !isMapClickAddMode;
+      const banner = document.getElementById('mapClickGuideBanner');
+      const btn = document.getElementById('toggleMapClickAddBtn');
+
+      if (isMapClickAddMode) {
+        banner.classList.remove('hidden');
+        btn.classList.add('bg-rose-500', 'text-white', 'border-rose-500');
+      } else {
+        banner.classList.add('hidden');
+        btn.classList.remove('bg-rose-500', 'text-white', 'border-rose-500');
+      }
+    }
+
+    /**
+     * OpenStreetMap Nominatim 기반 무료 장소 검색 (API 키 없이 즉시 동작)
+     */
+    async function searchPlacesAPI(query) {
+      try {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&accept-language=ko`;
+        const res = await fetch(url);
+        const data = await res.json();
+        return data.map((d) => ({
+          name: d.display_name.split(',')[0],
+          fullAddress: d.display_name,
+          lat: parseFloat(d.lat),
+          lng: parseFloat(d.lon)
+        }));
+      } catch (e) {
+        console.warn('장소 검색 오류:', e);
+        return [];
+      }
+    }
+
+    async function searchDestinationOnMap() {
+      const dest = document.getElementById('destinationInput').value.trim();
+      if (!dest) return;
+      const results = await searchPlacesAPI(dest);
+      if (results.length > 0) {
+        const { lat, lng, name } = results[0];
+        if (isGoogleMapsReady && googleMap) {
+          googleMap.panTo({ lat, lng });
+          googleMap.setZoom(11);
+        } else if (leafletMap) {
+          leafletMap.setView([lat, lng], 11);
+        }
+        showToast(`지도를 '${name}' 중심으로 이동했습니다.`);
+      } else {
+        showToast('해당 여행지 위치를 찾지 못했습니다.', 'error');
+      }
+    }
+
+    async function handleQuickPlaceSearch() {
+      const input = document.getElementById('mapPlaceSearchInput');
+      const box = document.getElementById('mapSearchResultsBox');
+      const keyword = input.value.trim();
+      if (!keyword) return;
+
+      box.classList.remove('hidden');
+      box.innerHTML = `<div class="text-xs text-stone-500 p-2">장소를 검색하는 중...</div>`;
+
+      const query = tripState.destination && !keyword.includes(tripState.destination)
+        ? `${tripState.destination} ${keyword}`
+        : keyword;
+
+      const results = await searchPlacesAPI(query);
+      if (results.length === 0) {
+        box.innerHTML = `<div class="text-xs text-stone-500 p-2">검색 결과가 없습니다. 지도 클릭으로 직접 추가해보세요!</div>`;
+        return;
+      }
+
+      box.innerHTML = '';
+      results.forEach((place) => {
+        const row = document.createElement('div');
+        row.className = 'flex items-center justify-between gap-2 p-2 rounded-lg hover:bg-white transition-colors';
+        row.innerHTML = `
+          <div class="min-w-0">
+            <div class="text-xs font-bold text-stone-800 truncate">${escapeHtml(place.name)}</div>
+            <div class="text-[11px] text-stone-400 truncate">${escapeHtml(place.fullAddress)}</div>
+          </div>
+          <button
+            type="button"
+            class="shrink-0 px-2.5 py-1 rounded-lg bg-rose-500 hover:bg-rose-600 text-white text-[11px] font-semibold cursor-pointer"
+          >
+            + 일정 추가
+          </button>
+        `;
+        row.querySelector('button').onclick = () => {
+          box.classList.add('hidden');
+          input.value = '';
+          openItemModal(null, { lat: place.lat, lng: place.lng }, place.name);
+        };
+        box.appendChild(row);
+      });
+    }
+
+    /* ===================================================================== */
+    /* 모바일 뷰 전환 (함께 보기 / 일정만 / 지도만)                            */
+    /* ===================================================================== */
+
+    function setMobileView(mode) {
+      const listSec = document.getElementById('itinerarySection');
+      const mapSec = document.getElementById('mapSection');
+
+      const btns = {
+        both: document.getElementById('mobileViewBothBtn'),
+        list: document.getElementById('mobileViewListBtn'),
+        map: document.getElementById('mobileViewMapBtn')
+      };
+
+      Object.entries(btns).forEach(([k, btn]) => {
+        if (k === mode) {
+          btn.className = 'py-1.5 rounded-lg bg-white text-stone-900 shadow-xs transition-all cursor-pointer';
+        } else {
+          btn.className = 'py-1.5 rounded-lg text-stone-600 hover:text-stone-900 transition-all cursor-pointer';
+        }
+      });
+
+      if (mode === 'both') {
+        listSec.classList.remove('hidden');
+        mapSec.classList.remove('hidden');
+      } else if (mode === 'list') {
+        listSec.classList.remove('hidden');
+        mapSec.classList.add('hidden');
+      } else if (mode === 'map') {
+        listSec.classList.add('hidden');
+        mapSec.classList.remove('hidden');
+      }
+
+      if (leafletMap && mode !== 'list') {
+        setTimeout(() => leafletMap.invalidateSize(), 100);
+      }
+    }
+
+    /* ===================================================================== */
+    /* 커플 공유 · Firebase Firestore 실시간 동기화 · JSON 내보내기/불러오기   */
+    /* ===================================================================== */
+
+    function openShareModal() {
+      document.getElementById('firebaseTripIdInput').value = appSettings.firebaseTripId || '';
+      document.getElementById('firebaseConfigInput').value = appSettings.firebaseConfigStr || '';
+      document.getElementById('googleMapsKeyInput').value = appSettings.googleMapsApiKey || '';
+      document.getElementById('shareModal').classList.remove('hidden');
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function closeShareModal() {
+      document.getElementById('shareModal').classList.add('hidden');
+    }
+
+    function switchShareTab(tab) {
+      const tabs = {
+        firebase: { btn: 'tabFirebaseBtn', panel: 'shareTabFirebase' },
+        json: { btn: 'tabJsonBtn', panel: 'shareTabJson' },
+        api: { btn: 'tabApiGuideBtn', panel: 'shareTabApi' }
+      };
+
+      Object.entries(tabs).forEach(([key, ids]) => {
+        const btn = document.getElementById(ids.btn);
+        const panel = document.getElementById(ids.panel);
+        if (key === tab) {
+          btn.className = 'pb-2.5 px-2 text-xs sm:text-sm font-bold border-b-2 border-rose-500 text-rose-600 cursor-pointer';
+          panel.classList.remove('hidden');
+        } else {
+          btn.className = 'pb-2.5 px-2 text-xs sm:text-sm font-semibold border-b-2 border-transparent text-stone-500 hover:text-stone-800 cursor-pointer';
+          panel.classList.add('hidden');
+        }
+      });
+    }
+
+    function generateRandomRoomCode() {
+      const words = ['JEJU', 'OSAKA', 'TOKYO', 'PARIS', 'LOVE', 'DATE', 'TRIP'];
+      const w = words[Math.floor(Math.random() * words.length)];
+      const num = Math.floor(1000 + Math.random() * 9000);
+      document.getElementById('firebaseTripIdInput').value = `COUPLE-${w}-${num}`;
+    }
+
+    function copyRoomCode() {
+      const code = document.getElementById('firebaseTripIdInput').value.trim();
+      if (!code) {
+        showToast('먼저 커플 여행 방 코드를 입력하거나 생성하세요.', 'error');
+        return;
+      }
+      copyTextSafe(code);
+      showToast(`방 코드 '${code}'가 복사되었습니다!`);
+    }
+
+    /**
+     * Firebase Firestore 실시간 동기화 연결
+     */
+    async function connectFirebaseSync(isSilent = false) {
+      const tripId = (isSilent ? appSettings.firebaseTripId : document.getElementById('firebaseTripIdInput').value).trim();
+      const configRaw = (isSilent ? appSettings.firebaseConfigStr : document.getElementById('firebaseConfigInput').value).trim();
+
+      if (!tripId || !configRaw) {
+        if (!isSilent) showToast('커플 여행 방 코드와 Firebase Config JSON을 모두 입력해주세요.', 'error');
+        return;
+      }
+
+      let configObj;
+      try {
+        configObj = JSON.parse(configRaw);
+      } catch (e) {
+        if (!isSilent) showToast('Firebase Config JSON 형식이 올바르지 않습니다.', 'error');
+        return;
+      }
+
+      try {
+        updateSyncBadge('syncing');
+        const { initializeApp, getApps } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
+        const { getFirestore, doc, setDoc, onSnapshot } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+
+        const existingApps = getApps();
+        const fbApp = existingApps.length > 0 ? existingApps[0] : initializeApp(configObj);
+        const db = getFirestore(fbApp);
+
+        firestoreDbRef = db;
+        firestoreDocFn = doc;
+        firestoreSetDocFn = setDoc;
+
+        appSettings.firebaseTripId = tripId;
+        appSettings.firebaseConfigStr = configRaw;
+        saveSettingsToStorage();
+
+        if (firebaseUnsubscribe) firebaseUnsubscribe();
+
+        const tripDocRef = doc(db, 'couple_trips', tripId);
+
+        firebaseUnsubscribe = onSnapshot(tripDocRef, (snapshot) => {
+          if (snapshot.exists()) {
+            const remoteData = snapshot.data();
+            if (remoteData && remoteData.updatedAt && remoteData.updatedAt > (tripState.updatedAt || 0)) {
+              isApplyingRemoteUpdate = true;
+              tripState = remoteData;
+              saveTripToStorage(false);
+              renderAll();
+              isApplyingRemoteUpdate = false;
+              showToast('상대방이 수정한 일정이 실시간 반영되었습니다 💕');
+            }
+          } else {
+            // 최초 방 생성 시 현재 로컬 일정 업로드
+            pushTripToFirebase();
+          }
+          updateSyncBadge('connected');
+        }, (err) => {
+          console.error('Firestore 실시간 리스너 오류:', err);
+          updateSyncBadge('error');
+          if (!isSilent) showToast('Firestore 권한 또는 설정을 확인해주세요.', 'error');
+        });
+
+        if (!isSilent) {
+          closeShareModal();
+          showToast(`실시간 커플 동기화 연결 완료! (방 코드: ${tripId})`);
+        }
+      } catch (err) {
+        console.error('Firebase 초기화 실패:', err);
+        updateSyncBadge('error');
+        if (!isSilent) showToast('Firebase 연결 중 오류가 발생했습니다.', 'error');
+      }
+    }
+
+    async function pushTripToFirebase() {
+      if (!firestoreDbRef || !appSettings.firebaseTripId) return;
+      try {
+        const ref = firestoreDocFn(firestoreDbRef, 'couple_trips', appSettings.firebaseTripId);
+        await firestoreSetDocFn(ref, tripState);
+        updateSyncBadge('connected');
+      } catch (e) {
+        console.error('Firestore 저장 실패:', e);
+        updateSyncBadge('error');
+      }
+    }
+
+    function disconnectFirebase() {
+      if (firebaseUnsubscribe) {
+        firebaseUnsubscribe();
+        firebaseUnsubscribe = null;
+      }
+      firestoreDbRef = null;
+      appSettings.firebaseTripId = '';
+      saveSettingsToStorage();
+      updateSyncBadge('local');
+      showToast('실시간 동기화가 해제되었습니다.');
+    }
+
+    function updateSyncBadge(status) {
+      const badge = document.getElementById('syncStatusBadge');
+      if (status === 'connected') {
+        badge.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-600 border border-rose-200/70';
+        badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span><span>실시간 동기화 중</span>`;
+      } else if (status === 'syncing') {
+        badge.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-700';
+        badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span><span>동기화 중...</span>`;
+      } else if (status === 'error') {
+        badge.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-red-50 text-red-600';
+        badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-red-500"></span><span>연동 확인 필요</span>`;
+      } else {
+        badge.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-stone-100 text-stone-600';
+        badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span><span>자동 저장됨</span>`;
+      }
+    }
+
+    /**
+     * JSON 클립보드 복사 / 파일 다운로드 / 불러오기
+     */
+    function copyTripJsonToClipboard() {
+      const jsonStr = JSON.stringify(tripState);
+      copyTextSafe(jsonStr);
+      showToast('전체 여행 일정 코드가 클립보드에 복사되었습니다! 카톡으로 보내보세요 💕');
+    }
+
+    function downloadTripJsonFile() {
+      const jsonStr = JSON.stringify(tripState, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const safeTitle = (tripState.title || 'couple-trip').replace(/[^a-zA-Z0-9가-힣_-]/g, '_');
+      a.href = url;
+      a.download = `${safeTitle}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('여행 백업 파일(.json)이 다운로드되었습니다.');
+    }
+
+    function importTripJsonFromText() {
+      const raw = document.getElementById('importJsonTextarea').value.trim();
+      if (!raw) {
+        showToast('불러올 JSON 코드를 붙여넣어 주세요.', 'error');
+        return;
+      }
+      applyImportedTripJson(raw);
+    }
+
+    function importTripJsonFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        applyImportedTripJson(e.target.result);
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    }
+
+    function applyImportedTripJson(rawStr) {
+      try {
+        const parsed = JSON.parse(rawStr);
+        if (!parsed || !Array.isArray(parsed.days)) {
+          throw new Error('유효하지 않은 여행 데이터');
+        }
+        tripState = parsed;
+        tripState.activeDayIndex = 0;
+        saveTripToStorage();
+        renderAll();
+        closeShareModal();
+        showToast('공유받은 여행 일정을 성공적으로 불러왔습니다! 🎉');
+      } catch (e) {
+        showToast('올바른 여행 일정 코드(JSON)가 아닙니다.', 'error');
+      }
+    }
+
+    function saveGoogleMapsApiKey() {
+      const key = document.getElementById('googleMapsKeyInput').value.trim();
+      appSettings.googleMapsApiKey = key;
+      saveSettingsToStorage();
+      if (key) {
+        loadGoogleMapsScript(key);
+        closeShareModal();
+      } else {
+        showToast('API 키가 비워졌습니다. 기본 지도를 사용합니다.');
+      }
+    }
+
+    /* ===================================================================== */
+    /* 초기화 모달, 라이트박스, 안전한 클립보드 복사 및 토스트 유틸            */
+    /* ===================================================================== */
+
+    function openResetModal() {
+      document.getElementById('resetModal').classList.remove('hidden');
+    }
+
+    function closeResetModal() {
+      document.getElementById('resetModal').classList.add('hidden');
+    }
+
+    function confirmResetTrip() {
+      const today = new Date().toISOString().split('T')[0];
+      tripState = {
+        title: '우리의 새로운 커플 여행 💕',
+        destination: '',
+        startDate: today,
+        endDate: today,
+        activeDayIndex: 0,
+        updatedAt: Date.now(),
+        days: [{ highlight: '', items: [] }]
+      };
+      saveTripToStorage();
+      renderAll();
+      closeResetModal();
+      showToast('새로운 빈 여행 노트가 준비되었습니다!');
+    }
+
+    function openLightbox(src) {
+      document.getElementById('lightboxImage').src = src;
+      document.getElementById('lightboxModal').classList.remove('hidden');
+    }
+
+    function closeLightbox() {
+      document.getElementById('lightboxModal').classList.add('hidden');
+    }
+
+    function copyTextSafe(text) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+      } catch (e) {
+        console.warn('복사 실패:', e);
+      }
+      document.body.removeChild(ta);
+    }
+
+    let toastTimer = null;
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const bg = type === 'error' ? 'bg-red-600' : 'bg-stone-900';
+      container.innerHTML = `
+        <div class="${bg} text-white text-xs sm:text-sm font-medium px-4 py-2.5 rounded-2xl shadow-xl animate-toast whitespace-nowrap">
+          ${escapeHtml(message)}
+        </div>
+      `;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        container.innerHTML = '';
+      }, 3000);
+    }
+
+    // ESC 키로 열려있는 모달 닫기
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeItemModal();
+        closeShareModal();
+        closeResetModal();
+        closeLightbox();
+      }
+    });
+  </script>
+</body>
+</html>
