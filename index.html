@@ -71,6 +71,16 @@
       background: #a8a29e;
     }
 
+    /* Google Places 자동완성 드롭다운 최상단 노출 보장 */
+    .pac-container {
+      z-index: 9999 !important;
+      border-radius: 12px;
+      margin-top: 4px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+      border: 1px solid #e7e5e4;
+      font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
+    }
+
     .custom-leaflet-pin {
       background: transparent;
       border: none;
@@ -176,7 +186,7 @@
           <input
             id="destinationInput"
             type="text"
-            placeholder="여행지 입력 (예: 도쿄, 제주도, 파리)"
+            placeholder="여행지 입력 (예: 마쓰야마, 도쿄, 제주도)"
             class="w-full text-sm font-medium text-stone-800 bg-transparent focus:outline-none"
           />
           <button
@@ -313,7 +323,7 @@
                 <input
                   id="mapPlaceSearchInput"
                   type="text"
-                  placeholder="장소 검색 후 바로 일정에 추가"
+                  placeholder="장소 검색 후 바로 일정에 추가 (예: 마쓰야마, 도고온천)"
                   class="w-full pl-9 pr-3 py-2 text-xs sm:text-sm bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:bg-white focus:border-rose-500 transition-colors"
                 />
               </div>
@@ -325,7 +335,7 @@
               </button>
             </div>
 
-            <div id="mapSearchResultsBox" class="hidden bg-stone-50 rounded-xl border border-stone-200 p-2 max-h-44 overflow-y-auto space-y-1"></div>
+            <div id="mapSearchResultsBox" class="hidden bg-stone-50 rounded-xl border border-stone-200 p-2 max-h-48 overflow-y-auto space-y-1"></div>
 
             <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
               <div class="flex items-center gap-1.5">
@@ -540,7 +550,7 @@
           </div>
           <div>
             <h3 class="text-base font-bold text-stone-900">커플 공유 · 실시간 연동 · 설정</h3>
-            <p class="text-[11px] text-stone-500">여자친구에게 전용 초대 링크를 보내 실시간으로 함께 일정을 수정하세요.</p>
+            <p class="text-[11px] text-stone-500">초대 링크에 구글 지도 API와 실시간 방 정보가 모두 포함되어 전송됩니다.</p>
           </div>
         </div>
         <button onclick="closeShareModal()" class="p-1.5 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-100 cursor-pointer">
@@ -577,15 +587,15 @@
         <!-- [탭 1] Firebase Firestore 실시간 동기화 & 원클릭 초대 링크 -->
         <div id="shareTabFirebase" class="space-y-4">
           <div class="bg-rose-50/80 border border-rose-200/80 rounded-2xl p-3.5 text-xs text-stone-700 space-y-2">
-            <p class="font-bold text-rose-700">💕 여자친구가 링크 클릭 한 번으로 바로 실시간 연동되게 하려면?</p>
-            <p>아래에 Firebase Config와 방 코드를 한 번만 연결한 뒤 <strong>[여자친구 초대 링크 복사]</strong> 버튼을 눌러 카톡으로 보내주세요. 여자친구는 별도 설정 입력 없이 접속하자마자 실시간으로 함께 수정할 수 있습니다!</p>
+            <p class="font-bold text-rose-700">💕 API 키 + 실시간 동기화 원클릭 초대 링크</p>
+            <p>아래 버튼으로 링크를 복사해 보내면 <strong>구글 지도 API 키, Firebase 설정, 커플 방 코드</strong>가 한 번에 자동 등록되어 새 기기에서도 별도 입력 없이 바로 작동합니다!</p>
             <button
               type="button"
               onclick="copyCoupleInviteLink()"
               class="w-full py-2.5 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
             >
               <i data-lucide="link" class="w-4 h-4 text-rose-400"></i>
-              <span>여자친구 초대 링크 복사 (원클릭 자동 연동)</span>
+              <span>여자친구 초대 링크 복사 (지도 API + 동기화 포함)</span>
             </button>
           </div>
 
@@ -595,7 +605,7 @@
               <input
                 id="firebaseTripIdInput"
                 type="text"
-                placeholder="예: OUR-TRIP-2026"
+                placeholder="예: JAPAN2026"
                 class="flex-1 px-3.5 py-2.5 rounded-xl border border-stone-200 text-sm font-bold uppercase tracking-wider text-stone-800 focus:outline-none focus:border-rose-500"
               />
               <button
@@ -616,7 +626,7 @@
           </div>
 
           <div>
-            <label class="block text-xs font-bold text-stone-700 mb-1">2. Firebase Config JSON (웹 앱 설정 객체)</label>
+            <label class="block text-xs font-bold text-stone-700 mb-1">2. Firebase Config JSON (기본 설정 완료)</label>
             <textarea
               id="firebaseConfigInput"
               rows="5"
@@ -691,9 +701,9 @@
         <!-- [탭 3] 구글 지도 API 키 설정 -->
         <div id="shareTabApi" class="hidden space-y-4">
           <div class="space-y-2">
-            <label class="block text-xs font-bold text-stone-700">Google Maps JavaScript API 키 (기본 적용 완료)</label>
+            <label class="block text-xs font-bold text-stone-700">Google Maps JavaScript API 키 (기본 내장 완료)</label>
             <p class="text-[11px] text-stone-500">
-              Google Maps를 사용하려면 본인의 API 키를 입력하세요. 키가 없으면 기본 지도(Leaflet)가 자동으로 사용됩니다.
+              코드에 API 키가 기본 내장되어 있어 모든 기기에서 자동으로 구글 지도가 열립니다. 키를 교체할 때만 수정하세요.
             </p>
             <div class="flex gap-2">
               <input
@@ -767,12 +777,21 @@
   <!-- ===================================================================== -->
   <script>
     /**
-     * [기본 설정값] 모든 접속자에게 기본 적용되는 API 키 및 연동 설정
+     * [기본 내장 설정] 모든 접속 기기에서 별도 입력 없이 바로 작동하는 기본 API 및 Firebase 설정
      */
     const DEFAULT_SETTINGS = {
-      googleMapsApiKey: '', // 공개 저장소에는 Google Maps API 키를 직접 넣지 마세요.
-      firebaseConfigStr: '', // (선택) Firebase Config JSON 문자열을 넣어두면 기본 주소만으로도 자동 연동됩니다
-      firebaseTripId: ''     // (선택) 기본 커플 여행 방 코드 (예: 'OUR-TRIP-2026')
+      googleMapsApiKey: 'AIzaSyBodx6mws_AGBMvqflAxl6yuZNojC9G4f4',
+      firebaseConfigStr: JSON.stringify({
+        apiKey: "AIzaSyARkl4Ho7Zd0ZtAVPrI7qAfchnulOj45gw",
+        authDomain: "travel-355ca.firebaseapp.com",
+        databaseURL: "https://travel-355ca-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "travel-355ca",
+        storageBucket: "travel-355ca.firebasestorage.app",
+        messagingSenderId: "827244000268",
+        appId: "1:827244000268:web:88a26a9a40c13e14b12a29",
+        measurementId: "G-M551F8MRNJ"
+      }),
+      firebaseTripId: '' // 기본 방 코드를 고정하려면 여기에 'JAPAN2026' 등을 입력하세요
     };
 
     const CATEGORY_META = {
@@ -784,13 +803,9 @@
       '이동': { badge: 'bg-sky-50 text-sky-700 border-sky-200', pinColor: '#0284c7', icon: 'car' }
     };
 
-    // 구버전(v1) 샘플 캐시와 분리하기 위해 v2 키 사용
     const STORAGE_KEY = 'couple_travel_planner_v2';
     const SETTINGS_KEY = 'couple_travel_settings_v2';
 
-    /**
-     * 완전 빈 상태의 초기 여행 데이터 생성기
-     */
     function createInitialEmptyTrip() {
       const today = new Date().toISOString().split('T')[0];
       return {
@@ -799,7 +814,7 @@
         startDate: today,
         endDate: today,
         activeDayIndex: 0,
-        updatedAt: 0, // 원격 Firebase 데이터가 존재할 경우 무조건 우선 동기화되도록 0으로 초기화
+        updatedAt: 0,
         days: [
           {
             highlight: '',
@@ -809,12 +824,10 @@
       };
     }
 
-    // 전역 상태
     let tripState = null;
     let appSettings = { ...DEFAULT_SETTINGS };
     let modalTempPhotos = [];
 
-    // 지도 관련 인스턴스
     let leafletMap = null;
     let leafletMarkersLayer = null;
     let leafletPolyline = null;
@@ -824,7 +837,6 @@
     let isGoogleMapsReady = false;
     let isMapClickAddMode = false;
 
-    // Firebase 실시간 동기화 상태
     let firebaseUnsubscribe = null;
     let firebaseSaveTimeout = null;
     let isApplyingRemoteUpdate = false;
@@ -832,9 +844,6 @@
     let firestoreDocFn = null;
     let firestoreSetDocFn = null;
 
-    /**
-     * 초기화: 페이지 로드 시 실행
-     */
     window.addEventListener('DOMContentLoaded', () => {
       loadSettingsFromStorage();
       applyUrlInviteParams();
@@ -843,41 +852,43 @@
       initLeafletMap();
       renderAll();
 
-      // 기본 적용된 Google Maps API 키 즉시 로드
       if (appSettings.googleMapsApiKey) {
         loadGoogleMapsScript(appSettings.googleMapsApiKey);
       }
 
-      // Firebase 연동 정보가 있거나 초대 링크로 접속한 경우 자동 실시간 연결
       if (appSettings.firebaseConfigStr && appSettings.firebaseTripId) {
         connectFirebaseSync(true);
       }
     });
 
     /**
-     * 초대 링크 URL 파라미터(?room=...&cfg=...) 자동 인식 및 적용
+     * 초대 링크 URL 파라미터(?room=...&cfg=...&gkey=...) 자동 인식 및 영구 저장
      */
     function applyUrlInviteParams() {
       try {
         const params = new URLSearchParams(window.location.search);
         const roomParam = params.get('room');
         const cfgParam = params.get('cfg');
+        const gkeyParam = params.get('gkey');
         let hasUpdated = false;
 
         if (roomParam) {
-          appSettings.firebaseTripId = decodeURIComponent(roomParam).trim();
+          appSettings.firebaseTripId = decodeURIComponent(roomParam).trim().toUpperCase();
           hasUpdated = true;
         }
         if (cfgParam) {
           const decodedJson = decodeURIComponent(escape(atob(cfgParam)));
-          JSON.parse(decodedJson); // 유효성 검증
+          JSON.parse(decodedJson);
           appSettings.firebaseConfigStr = decodedJson;
+          hasUpdated = true;
+        }
+        if (gkeyParam) {
+          appSettings.googleMapsApiKey = decodeURIComponent(gkeyParam).trim();
           hasUpdated = true;
         }
 
         if (hasUpdated) {
           saveSettingsToStorage();
-          // 주소창 깔끔하게 정리
           const cleanUrl = window.location.origin + window.location.pathname;
           window.history.replaceState({}, document.title, cleanUrl);
         }
@@ -886,9 +897,6 @@
       }
     }
 
-    /**
-     * 로컬스토리지에서 설정 및 여행 데이터 불러오기
-     */
     function loadSettingsFromStorage() {
       appSettings = { ...DEFAULT_SETTINGS };
       try {
@@ -897,7 +905,7 @@
           const parsed = JSON.parse(raw);
           appSettings.googleMapsApiKey = parsed.googleMapsApiKey || DEFAULT_SETTINGS.googleMapsApiKey;
           appSettings.firebaseConfigStr = parsed.firebaseConfigStr || DEFAULT_SETTINGS.firebaseConfigStr;
-          appSettings.firebaseTripId = parsed.firebaseTripId || DEFAULT_SETTINGS.firebaseTripId;
+          appSettings.firebaseTripId = (parsed.firebaseTripId || DEFAULT_SETTINGS.firebaseTripId || '').toUpperCase();
         }
       } catch (e) {
         console.warn('설정 로드 실패:', e);
@@ -925,9 +933,6 @@
       }
     }
 
-    /**
-     * 여행 데이터 저장 (LocalStorage + Firebase 실시간 동기화)
-     */
     function saveTripToStorage(triggerRemoteSync = true) {
       if (triggerRemoteSync && !isApplyingRemoteUpdate) {
         tripState.updatedAt = Date.now();
@@ -947,9 +952,6 @@
       }
     }
 
-    /**
-     * 상단 헤더 인풋 이벤트 바인딩
-     */
     function bindHeaderEvents() {
       const titleInput = document.getElementById('tripTitleInput');
       const destInput = document.getElementById('destinationInput');
@@ -1001,7 +1003,10 @@
       });
 
       mapSearchInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') handleQuickPlaceSearch();
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          handleQuickPlaceSearch();
+        }
       });
     }
 
@@ -1044,35 +1049,7 @@
       const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
       const month = String(d.getMonth() + 1).padStart(2, '0');
       const day = String(d.getDate()).padStart(2, '0');
-      return `${month}.${day} (${weekdays[d.getDay()]})`;
-    }
-
-    function renderAll() {
-      renderHeader();
-      renderDayTabs();
-      renderTimeline();
-      renderMapMarkersAndRoute();
-      if (window.lucide) {
-        lucide.createIcons();
-      }
-    }
-
-    function renderHeader() {
-      document.getElementById('tripTitleInput').value = tripState.title || '';
-      document.getElementById('destinationInput').value = tripState.destination || '';
-      document.getElementById('startDateInput').value = tripState.startDate || '';
-      document.getElementById('endDateInput').value = tripState.endDate || '';
-
-      const dDayBadge = document.getElementById('dDayBadge');
-      if (tripState.startDate) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const start = new Date(tripState.startDate + 'T00:00:00');
-        const end = tripState.endDate ? new Date(tripState.endDate + 'T00:00:00') : start;
-        const diffDays = Math.round((start - today) / (1000 * 60 * 60 * 24));
-
-        if (diffDays > 0) {
-          dDayBadge.textContent = `D-${diffDays} 설레는 여행 전 💕`;
+      return `${month}.${day} (${weekdays[d.getDay()]})`; }  function renderAll() { renderHeader(); renderDayTabs(); renderTimeline(); renderMapMarkersAndRoute(); if (window.lucide) { lucide.createIcons(); } }  function renderHeader() { document.getElementById('tripTitleInput').value = tripState.title \vert{}\vert{} ''; document.getElementById('destinationInput').value = tripState.destination \vert{}\vert{} ''; document.getElementById('startDateInput').value = tripState.startDate \vert{}\vert{} ''; document.getElementById('endDateInput').value = tripState.endDate \vert{}\vert{} '';  const dDayBadge = document.getElementById('dDayBadge'); if (tripState.startDate) { const today = new Date(); today.setHours(0, 0, 0, 0); const start = new Date(tripState.startDate + 'T00:00:00'); const end = tripState.endDate ? new Date(tripState.endDate + 'T00:00:00') : start; const diffDays = Math.round((start - today) / (1000 * 60 * 60 * 24));  if (diffDays > 0) { dDayBadge.textContent = `D-${diffDays} 설레는 여행 전 💕`;
           dDayBadge.className = 'inline-flex items-center px-2.5 py-1 rounded-xl text-xs font-bold bg-rose-100 text-rose-700';
         } else if (today >= start && today <= end) {
           dDayBadge.textContent = `여행 계획 중 ✨`;
@@ -1109,8 +1086,7 @@
           : 'shrink-0 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200/80 text-stone-700 text-xs sm:text-sm font-medium transition-all cursor-pointer';
 
         btn.innerHTML = `
-          <span>Day ${idx + 1}</span>
-          ${dateStr ? `<span class="text-[11px] opacity-85 font-normal">${dateStr}</span>` : ''}
+          <span>Day ${idx + 1}</span>${dateStr ? `<span class="text-[11px] opacity-85 font-normal">${dateStr}</span>` : ''}
           <span class="px-1.5 py-0.2 rounded-full text-[10px] ${isActive ? 'bg-white/25 text-white' : 'bg-white text-stone-500'}">${count}</span>
         `;
         container.appendChild(btn);
@@ -1136,7 +1112,7 @@
             </div>
             <div>
               <h3 class="text-sm font-bold text-stone-800">아직 등록된 일정이 없어요</h3>
-              <p class="text-xs text-stone-500 mt-1">상단에서 여행지와 날짜를 정한 뒤, <strong>[일정 추가]</strong> 버튼이나 오른쪽 지도를 클릭해 첫 번째 장소를 추가해보세요!</p>
+              <p class="text-xs text-stone-500 mt-1">상단에서 여행지와 날짜를 정한 뒤, <strong>[일정 추가]</strong> 버튼이나 오른쪽 지도 검색으로 장소를 추가해보세요!</p>
             </div>
             <button
               onclick="openItemModal()"
@@ -1154,8 +1130,7 @@
         const meta = CATEGORY_META[item.category] || CATEGORY_META['관광지'];
         const hasCoords = typeof item.lat === 'number' && typeof item.lng === 'number' && !isNaN(item.lat) && !isNaN(item.lng);
         const googleMapsUrl = hasCoords
-          ? `https://www.google.com/maps/search/?api=1&query=${item.lat},${item.lng}`
-          : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((tripState.destination ? tripState.destination + ' ' : '') + item.place)}`;
+          ? `https://www.google.com/maps/search/?api=1&query=${item.lat},${item.lng}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((tripState.destination ? tripState.destination + ' ' : '') + item.place)}`;
 
         const photosHtml = (item.photos && item.photos.length > 0)
           ? `
@@ -1243,924 +1218,3 @@
                   ${escapeHtml(item.place)}
                 </h4>
                 <a
-                  href="${googleMapsUrl}"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-700 bg-blue-50/80 hover:bg-blue-100 px-2 py-1 rounded-lg transition-colors"
-                >
-                  <span>구글 지도</span>
-                  <i data-lucide="external-link" class="w-3 h-3"></i>
-                </a>
-              </div>
-
-              ${item.memo ? `
-                <p class="mt-2 text-xs sm:text-sm text-stone-600 bg-stone-50/90 px-3 py-2 rounded-xl border border-stone-100 whitespace-pre-line leading-relaxed">${escapeHtml(item.memo)}</p>
-              ` : ''}
-
-              ${photosHtml}
-            </div>
-          </div>
-        `;
-        container.appendChild(card);
-      });
-    }
-
-    function escapeHtml(str) {
-      if (!str) return '';
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-    }
-
-    /* ===================================================================== */
-    /* 일정 CRUD 및 사진 압축 업로드                                         */
-    /* ===================================================================== */
-
-    function openItemModal(editId = null, prefillCoords = null, prefillPlace = '') {
-      const modal = document.getElementById('itemModal');
-      const titleEl = document.getElementById('itemModalTitle');
-      const editIdInput = document.getElementById('editItemId');
-      const timeInput = document.getElementById('itemTimeInput');
-      const catInput = document.getElementById('itemCategoryInput');
-      const placeInput = document.getElementById('itemPlaceInput');
-      const latInput = document.getElementById('itemLatInput');
-      const lngInput = document.getElementById('itemLngInput');
-      const memoInput = document.getElementById('itemMemoInput');
-
-      const activeDay = tripState.days[tripState.activeDayIndex];
-
-      if (editId) {
-        const existing = activeDay.items.find((i) => i.id === editId);
-        if (!existing) return;
-        titleEl.textContent = '일정 수정하기';
-        editIdInput.value = existing.id;
-        timeInput.value = existing.time || '12:00';
-        catInput.value = existing.category || '관광지';
-        placeInput.value = existing.place || '';
-        latInput.value = existing.lat ?? '';
-        lngInput.value = existing.lng ?? '';
-        memoInput.value = existing.memo || '';
-        modalTempPhotos = [...(existing.photos || [])];
-      } else {
-        titleEl.textContent = `Day ${tripState.activeDayIndex + 1} 새 일정 추가`;
-        editIdInput.value = '';
-        const lastItem = activeDay.items[activeDay.items.length - 1];
-        timeInput.value = lastItem && lastItem.time ? suggestNextTime(lastItem.time) : '10:00';
-        catInput.value = '관광지';
-        placeInput.value = prefillPlace || '';
-        latInput.value = prefillCoords ? prefillCoords.lat.toFixed(5) : '';
-        lngInput.value = prefillCoords ? prefillCoords.lng.toFixed(5) : '';
-        memoInput.value = '';
-        modalTempPhotos = [];
-      }
-
-      renderModalPhotoPreviews();
-      modal.classList.remove('hidden');
-      if (window.lucide) lucide.createIcons();
-    }
-
-    function closeItemModal() {
-      document.getElementById('itemModal').classList.add('hidden');
-    }
-
-    function suggestNextTime(timeStr) {
-      const [h, m] = timeStr.split(':').map(Number);
-      if (isNaN(h)) return '12:00';
-      const nextH = Math.min(23, h + 2);
-      return `${String(nextH).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}`;
-    }
-
-    async function handlePhotoUpload(event) {
-      const files = Array.from(event.target.files || []);
-      if (files.length === 0) return;
-
-      showToast(`사진 ${files.length}장을 최적화하여 첨부하는 중...`);
-
-      for (const file of files) {
-        try {
-          const compressedDataUrl = await compressImageFile(file, 800, 0.72);
-          modalTempPhotos.push(compressedDataUrl);
-        } catch (err) {
-          console.error('이미지 압축 오류:', err);
-        }
-      }
-
-      event.target.value = '';
-      renderModalPhotoPreviews();
-    }
-
-    function compressImageFile(file, maxDim = 800, quality = 0.72) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const img = new Image();
-          img.onload = () => {
-            let width = img.width;
-            let height = img.height;
-            if (width > maxDim || height > maxDim) {
-              if (width > height) {
-                height = Math.round((height * maxDim) / width);
-                width = maxDim;
-              } else {
-                width = Math.round((width * maxDim) / height);
-                height = maxDim;
-              }
-            }
-            const canvas = document.createElement('canvas');
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, width, height);
-            resolve(canvas.toDataURL('image/jpeg', quality));
-          };
-          img.onerror = reject;
-          img.src = e.target.result;
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-    }
-
-    function renderModalPhotoPreviews() {
-      const grid = document.getElementById('modalPhotoPreviewGrid');
-      grid.innerHTML = '';
-
-      modalTempPhotos.forEach((src, idx) => {
-        const wrap = document.createElement('div');
-        wrap.className = 'relative aspect-square rounded-xl overflow-hidden border border-stone-200 bg-stone-100';
-        wrap.innerHTML = `
-          <img src="${src}" class="w-full h-full object-cover" />
-          <button
-            type="button"
-            onclick="removeModalPhoto(${idx})"
-            class="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-white flex items-center justify-center text-xs hover:bg-red-600 cursor-pointer"
-          >
-            ×
-          </button>
-        `;
-        grid.appendChild(wrap);
-      });
-    }
-
-    function removeModalPhoto(idx) {
-      modalTempPhotos.splice(idx, 1);
-      renderModalPhotoPreviews();
-    }
-
-    async function geocodeModalPlace() {
-      const place = document.getElementById('itemPlaceInput').value.trim();
-      if (!place) {
-        showToast('먼저 장소명을 입력해주세요!', 'error');
-        return;
-      }
-      const query = tripState.destination ? `${tripState.destination} ${place}` : place;
-      const results = await searchPlacesAPI(query);
-      if (results && results.length > 0) {
-        document.getElementById('itemLatInput').value = results[0].lat.toFixed(5);
-        document.getElementById('itemLngInput').value = results[0].lng.toFixed(5);
-        showToast(`좌표를 찾았습니다: ${results[0].name}`);
-      } else {
-        showToast('일치하는 좌표를 찾지 못했습니다. 지도에서 직접 클릭해도 됩니다.', 'error');
-      }
-    }
-
-    async function saveScheduleItem() {
-      const editId = document.getElementById('editItemId').value;
-      const time = document.getElementById('itemTimeInput').value || '10:00';
-      const category = document.getElementById('itemCategoryInput').value;
-      const place = document.getElementById('itemPlaceInput').value.trim();
-      let lat = parseFloat(document.getElementById('itemLatInput').value);
-      let lng = parseFloat(document.getElementById('itemLngInput').value);
-      const memo = document.getElementById('itemMemoInput').value.trim();
-
-      if (!place) {
-        showToast('장소명을 입력해주세요!', 'error');
-        return;
-      }
-
-      if (isNaN(lat) || isNaN(lng)) {
-        const query = tripState.destination ? `${tripState.destination} ${place}` : place;
-        const found = await searchPlacesAPI(query);
-        if (found && found.length > 0) {
-          lat = found[0].lat;
-          lng = found[0].lng;
-        } else {
-          lat = null;
-          lng = null;
-        }
-      }
-
-      const activeDay = tripState.days[tripState.activeDayIndex];
-
-      if (editId) {
-        const idx = activeDay.items.findIndex((i) => i.id === editId);
-        if (idx !== -1) {
-          activeDay.items[idx] = {
-            ...activeDay.items[idx],
-            time,
-            category,
-            place,
-            lat,
-            lng,
-            memo,
-            photos: [...modalTempPhotos]
-          };
-        }
-        showToast('일정이 수정되었습니다 ✨');
-      } else {
-        activeDay.items.push({
-          id: 'item_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
-          time,
-          category,
-          place,
-          lat,
-          lng,
-          memo,
-          photos: [...modalTempPhotos]
-        });
-        showToast('새 일정이 추가되었습니다 💕');
-      }
-
-      closeItemModal();
-      saveTripToStorage();
-      renderAll();
-    }
-
-    function deleteScheduleItem(itemId) {
-      const activeDay = tripState.days[tripState.activeDayIndex];
-      activeDay.items = activeDay.items.filter((i) => i.id !== itemId);
-      saveTripToStorage();
-      renderAll();
-      showToast('일정이 삭제되었습니다.');
-    }
-
-    function moveScheduleItem(index, direction) {
-      const activeDay = tripState.days[tripState.activeDayIndex];
-      const targetIndex = index + direction;
-      if (targetIndex < 0 || targetIndex >= activeDay.items.length) return;
-
-      const temp = activeDay.items[index];
-      activeDay.items[index] = activeDay.items[targetIndex];
-      activeDay.items[targetIndex] = temp;
-
-      saveTripToStorage();
-      renderAll();
-    }
-
-    /* ===================================================================== */
-    /* 지도 엔진 (Google Maps API 기본 연동 + Leaflet 폴백)                  */
-    /* ===================================================================== */
-
-    function initLeafletMap() {
-      leafletMap = L.map('leafletMapContainer', {
-        zoomControl: true
-      }).setView([37.5665, 126.9780], 11);
-
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; OpenStreetMap &copy; CARTO',
-        subdomains: 'abcd',
-        maxZoom: 19
-      }).addTo(leafletMap);
-
-      leafletMarkersLayer = L.layerGroup().addTo(leafletMap);
-
-      leafletMap.on('click', (e) => {
-        if (!isMapClickAddMode) return;
-        toggleMapClickAddMode(false);
-        openItemModal(null, { lat: e.latlng.lat, lng: e.latlng.lng }, '선택한 위치');
-      });
-    }
-
-    function loadGoogleMapsScript(apiKey) {
-      if (!apiKey) return;
-      if (window.google && window.google.maps) {
-        initGoogleMapInstance();
-        return;
-      }
-
-      window.gm_authFailure = () => {
-        showToast('Google Maps API 키 도메인 제한 설정을 확인해주세요.', 'error');
-        isGoogleMapsReady = false;
-        document.getElementById('googleMapContainer').classList.add('hidden');
-        document.getElementById('leafletMapContainer').classList.remove('hidden');
-        updateMapEngineBadge(false);
-      };
-
-      const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=places&language=ko&region=KR&callback=initGoogleMapInstance`;
-      script.async = true;
-      script.defer = true;
-      script.onerror = () => {
-        showToast('Google Maps 스크립트를 불러오지 못했습니다. 기본 지도를 사용합니다.', 'error');
-        updateMapEngineBadge(false);
-      };
-      document.head.appendChild(script);
-    }
-
-    window.initGoogleMapInstance = function () {
-      try {
-        document.getElementById('leafletMapContainer').classList.add('hidden');
-        const gContainer = document.getElementById('googleMapContainer');
-        gContainer.classList.remove('hidden');
-
-        googleMap = new google.maps.Map(gContainer, {
-          center: { lat: 37.5665, lng: 126.9780 },
-          zoom: 11,
-          mapTypeControl: false,
-          streetViewControl: false,
-          fullscreenControl: true
-        });
-
-        googleMap.addListener('click', (e) => {
-          if (!isMapClickAddMode) return;
-          toggleMapClickAddMode(false);
-          openItemModal(null, { lat: e.latLng.lat(), lng: e.latLng.lng() }, '구글 지도 선택 위치');
-        });
-
-        const searchInput = document.getElementById('mapPlaceSearchInput');
-        const autocomplete = new google.maps.places.Autocomplete(searchInput);
-        autocomplete.addListener('place_changed', () => {
-          const place = autocomplete.getPlace();
-          if (place && place.geometry && place.geometry.location) {
-            const lat = place.geometry.location.lat();
-            const lng = place.geometry.location.lng();
-            openItemModal(null, { lat, lng }, place.name || searchInput.value);
-            searchInput.value = '';
-          }
-        });
-
-        isGoogleMapsReady = true;
-        updateMapEngineBadge(true);
-        renderMapMarkersAndRoute();
-      } catch (err) {
-        console.error('Google Map 초기화 오류:', err);
-      }
-    };
-
-    function updateMapEngineBadge(isGoogle) {
-      const badge = document.getElementById('mapEngineBadge');
-      if (isGoogle) {
-        badge.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-semibold bg-blue-50 text-blue-700 border border-blue-200/70';
-        badge.innerHTML = `<i data-lucide="map-pin" class="w-3 h-3"></i><span>Google Maps 연동됨</span>`;
-      } else {
-        badge.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60';
-        badge.innerHTML = `<i data-lucide="map" class="w-3 h-3"></i><span>기본 지도 모드</span>`;
-      }
-      if (window.lucide) lucide.createIcons();
-    }
-
-    function renderMapMarkersAndRoute() {
-      const activeDay = tripState.days[tripState.activeDayIndex] || { items: [] };
-      const validPoints = [];
-
-      activeDay.items.forEach((item, idx) => {
-        if (typeof item.lat === 'number' && typeof item.lng === 'number' && !isNaN(item.lat) && !isNaN(item.lng)) {
-          validPoints.push({ item, idx, lat: item.lat, lng: item.lng });
-        }
-      });
-
-      const routeLink = document.getElementById('openGoogleMapsRouteLink');
-      if (validPoints.length >= 2) {
-        const origin = `${validPoints[0].lat},${validPoints[0].lng}`;
-        const dest = `${validPoints[validPoints.length - 1].lat},${validPoints[validPoints.length - 1].lng}`;
-        const waypoints = validPoints.slice(1, -1).map((p) => `${p.lat},${p.lng}`).join('|');
-        routeLink.href = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}${waypoints ? `&waypoints=${encodeURIComponent(waypoints)}` : ''}`;
-      } else if (validPoints.length === 1) {
-        routeLink.href = `https://www.google.com/maps/search/?api=1&query=${validPoints[0].lat},${validPoints[0].lng}`;
-      } else {
-        routeLink.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(tripState.destination || '대한민국')}`;
-      }
-
-      if (isGoogleMapsReady && googleMap) {
-        googleMarkers.forEach((m) => m.setMap(null));
-        googleMarkers = [];
-        if (googlePolyline) {
-          googlePolyline.setMap(null);
-          googlePolyline = null;
-        }
-
-        const bounds = new google.maps.LatLngBounds();
-        const pathCoords = [];
-
-        validPoints.forEach((pt) => {
-          const meta = CATEGORY_META[pt.item.category] || CATEGORY_META['관광지'];
-          const pos = { lat: pt.lat, lng: pt.lng };
-          pathCoords.push(pos);
-          bounds.extend(pos);
-
-          const marker = new google.maps.Marker({
-            position: pos,
-            map: googleMap,
-            label: {
-              text: String(pt.idx + 1),
-              color: '#ffffff',
-              fontWeight: 'bold',
-              fontSize: '12px'
-            },
-            icon: {
-              path: google.maps.SymbolPath.CIRCLE,
-              scale: 15,
-              fillColor: meta.pinColor,
-              fillOpacity: 1,
-              strokeColor: '#ffffff',
-              strokeWeight: 2.5
-            },
-            title: `${pt.idx + 1}. ${pt.item.place}`
-          });
-
-          const infoWindow = new google.maps.InfoWindow({
-            content: `<div style="font-family:sans-serif;padding:4px;"><strong>${pt.idx + 1}. ${escapeHtml(pt.item.place)}</strong><br/><span style="font-size:12px;color:#666;">${pt.item.time} · ${pt.item.category}</span></div>`
-          });
-          marker.addListener('click', () => infoWindow.open(googleMap, marker));
-          googleMarkers.push(marker);
-        });
-
-        if (pathCoords.length > 1) {
-          googlePolyline = new google.maps.Polyline({
-            path: pathCoords,
-            geodesic: true,
-            strokeColor: '#f43f5e',
-            strokeOpacity: 0.85,
-            strokeWeight: 3.5,
-            map: googleMap
-          });
-        }
-
-        if (validPoints.length > 0) {
-          googleMap.fitBounds(bounds);
-          if (validPoints.length === 1) googleMap.setZoom(14);
-        }
-        
-
-      }
-
-      // Google Maps를 사용하지 않는 경우 Leaflet에 마커와 경로를 표시합니다.
-      if (leafletMap && leafletMarkersLayer) {
-        leafletMarkersLayer.clearLayers();
-        if (leafletPolyline) {
-          leafletMap.removeLayer(leafletPolyline);
-          leafletPolyline = null;
-        }
-
-        const path = [];
-        validPoints.forEach((pt) => {
-          const meta = CATEGORY_META[pt.item.category] || CATEGORY_META['관광지'];
-          const marker = L.marker([pt.lat, pt.lng], {
-            icon: L.divIcon({
-              className: 'custom-leaflet-pin',
-              html: `<div class="pin-badge" style="background:${meta.pinColor}">${pt.idx + 1}</div>`,
-              iconSize: [32, 32],
-              iconAnchor: [16, 16]
-            })
-          });
-          marker.bindPopup(`<strong>${escapeHtml(pt.item.place)}</strong><br>${escapeHtml(pt.item.time || '')} · ${escapeHtml(pt.item.category || '')}`);
-          marker.addTo(leafletMarkersLayer);
-          path.push([pt.lat, pt.lng]);
-        });
-
-        if (path.length > 1) {
-          leafletPolyline = L.polyline(path, {
-            color: '#f43f5e',
-            weight: 4,
-            opacity: 0.85
-          }).addTo(leafletMap);
-          leafletMap.fitBounds(leafletPolyline.getBounds(), { padding: [30, 30] });
-        } else if (path.length === 1) {
-          leafletMap.setView(path[0], 15);
-        }
-      }
-    }
-
-    function focusMapOnItem(index) {
-      const item = tripState.days[tripState.activeDayIndex]?.items?.[index];
-      if (!item || !Number.isFinite(item.lat) || !Number.isFinite(item.lng)) {
-        showToast('이 장소에는 지도 좌표가 아직 없습니다.', 'error');
-        return;
-      }
-      if (isGoogleMapsReady && googleMap) {
-        googleMap.setCenter({ lat: item.lat, lng: item.lng });
-        googleMap.setZoom(16);
-      } else if (leafletMap) {
-        leafletMap.setView([item.lat, item.lng], 16);
-      }
-    }
-
-    function fitMapToActiveDay() {
-      const points = (tripState.days[tripState.activeDayIndex]?.items || [])
-        .filter(i => Number.isFinite(i.lat) && Number.isFinite(i.lng));
-      if (!points.length) {
-        showToast('표시할 장소 좌표가 없습니다.', 'error');
-        return;
-      }
-      if (isGoogleMapsReady && googleMap) {
-        const bounds = new google.maps.LatLngBounds();
-        points.forEach(p => bounds.extend({ lat: p.lat, lng: p.lng }));
-        googleMap.fitBounds(bounds);
-        if (points.length === 1) googleMap.setZoom(15);
-      } else if (leafletMap) {
-        if (points.length === 1) leafletMap.setView([points[0].lat, points[0].lng], 15);
-        else leafletMap.fitBounds(points.map(p => [p.lat, p.lng]), { padding: [30, 30] });
-      }
-    }
-
-    async function searchPlacesAPI(query) {
-      // Google Places가 준비되어 있으면 Places 서비스 우선 사용
-      if (isGoogleMapsReady && googleMap && google.maps?.places) {
-        return new Promise(resolve => {
-          const service = new google.maps.places.PlacesService(googleMap);
-          service.textSearch({ query }, (results, status) => {
-            if (status === google.maps.places.PlacesServiceStatus.OK && results?.length) {
-              resolve(results.slice(0, 5).map(r => ({
-                name: r.name,
-                lat: r.geometry.location.lat(),
-                lng: r.geometry.location.lng(),
-                address: r.formatted_address || ''
-              })));
-            } else resolve([]);
-          });
-        });
-      }
-
-      // 기본 지도 모드에서는 Nominatim 검색 사용
-      try {
-        const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&accept-language=ko&q=${encodeURIComponent(query)}`;
-        const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
-        if (!response.ok) return [];
-        const data = await response.json();
-        return data.map(r => ({
-          name: r.name || r.display_name,
-          lat: Number(r.lat),
-          lng: Number(r.lon),
-          address: r.display_name || ''
-        }));
-      } catch (error) {
-        console.error('장소 검색 실패:', error);
-        return [];
-      }
-    }
-
-    async function handleQuickPlaceSearch() {
-      const input = document.getElementById('mapPlaceSearchInput');
-      const query = input.value.trim();
-      if (!query) return showToast('검색할 장소를 입력해주세요.', 'error');
-
-      const box = document.getElementById('mapSearchResultsBox');
-      box.classList.remove('hidden');
-      box.innerHTML = '<p class="p-2 text-xs text-stone-500">검색 중...</p>';
-
-      const fullQuery = tripState.destination ? `${tripState.destination} ${query}` : query;
-      const results = await searchPlacesAPI(fullQuery);
-      box.innerHTML = '';
-
-      if (!results.length) {
-        box.innerHTML = '<p class="p-2 text-xs text-stone-500">검색 결과가 없습니다. 장소명을 바꿔보세요.</p>';
-        return;
-      }
-
-      results.forEach(result => {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'w-full text-left p-2 rounded-lg hover:bg-rose-50 text-xs';
-        button.innerHTML = `<strong>${escapeHtml(result.name)}</strong><span class="block text-stone-500 mt-0.5">${escapeHtml(result.address)}</span>`;
-        button.addEventListener('click', () => {
-          box.classList.add('hidden');
-          input.value = '';
-          openItemModal(null, { lat: result.lat, lng: result.lng }, result.name);
-        });
-        box.appendChild(button);
-      });
-    }
-
-    async function searchDestinationOnMap() {
-      const destination = document.getElementById('destinationInput').value.trim();
-      if (!destination) return showToast('여행지를 먼저 입력해주세요.', 'error');
-      const results = await searchPlacesAPI(destination);
-      if (!results.length) return showToast('여행지 위치를 찾지 못했습니다.', 'error');
-      const p = results[0];
-      if (isGoogleMapsReady && googleMap) {
-        googleMap.setCenter({ lat: p.lat, lng: p.lng });
-        googleMap.setZoom(12);
-      } else if (leafletMap) {
-        leafletMap.setView([p.lat, p.lng], 12);
-      }
-    }
-
-    function toggleMapClickAddMode(force) {
-      isMapClickAddMode = typeof force === 'boolean' ? force : !isMapClickAddMode;
-      document.getElementById('mapClickGuideBanner').classList.toggle('hidden', !isMapClickAddMode);
-      const btn = document.getElementById('toggleMapClickAddBtn');
-      if (btn) {
-        btn.classList.toggle('bg-rose-50', isMapClickAddMode);
-        btn.classList.toggle('text-rose-600', isMapClickAddMode);
-      }
-    }
-
-    function setMobileView(view) {
-      const list = document.getElementById('itinerarySection');
-      const map = document.getElementById('mapSection');
-      list.classList.toggle('hidden', view === 'map');
-      map.classList.toggle('hidden', view === 'list');
-      ['both', 'list', 'map'].forEach(name => {
-        const btn = document.getElementById(`mobileView${name[0].toUpperCase()}${name.slice(1)}Btn`);
-        if (!btn) return;
-        const active = name === view;
-        btn.className = active
-          ? 'py-1.5 rounded-lg bg-white text-stone-900 shadow-xs transition-all cursor-pointer'
-          : 'py-1.5 rounded-lg text-stone-600 hover:text-stone-900 transition-all cursor-pointer';
-      });
-      setTimeout(() => {
-        if (leafletMap) leafletMap.invalidateSize();
-        if (googleMap && isGoogleMapsReady) google.maps.event.trigger(googleMap, 'resize');
-      }, 100);
-    }
-
-    function openLightbox(src) {
-      document.getElementById('lightboxImage').src = src;
-      document.getElementById('lightboxModal').classList.remove('hidden');
-    }
-    function closeLightbox() {
-      document.getElementById('lightboxModal').classList.add('hidden');
-      document.getElementById('lightboxImage').src = '';
-    }
-
-    function openShareModal() {
-      document.getElementById('shareModal').classList.remove('hidden');
-      document.getElementById('firebaseTripIdInput').value = appSettings.firebaseTripId || '';
-      document.getElementById('firebaseConfigInput').value = appSettings.firebaseConfigStr || '';
-    }
-    function closeShareModal() {
-      document.getElementById('shareModal').classList.add('hidden');
-    }
-    function switchShareTab(tab) {
-      ['firebase', 'json', 'api'].forEach(name => {
-        document.getElementById(`shareTab${name[0].toUpperCase()}${name.slice(1)}`).classList.toggle('hidden', name !== tab);
-        const btn = document.getElementById(`tab${name[0].toUpperCase()}${name.slice(1)}Btn`);
-        btn.className = name === tab
-          ? 'pb-2.5 px-2 text-xs sm:text-sm font-bold border-b-2 border-rose-500 text-rose-600 cursor-pointer'
-          : 'pb-2.5 px-2 text-xs sm:text-sm font-semibold border-b-2 border-transparent text-stone-500 hover:text-stone-800 cursor-pointer';
-      });
-    }
-
-    function generateRandomRoomCode() {
-      const code = 'TRIP-' + Math.random().toString(36).slice(2, 8).toUpperCase();
-      document.getElementById('firebaseTripIdInput').value = code;
-    }
-    async function copyRoomCode() {
-      const code = document.getElementById('firebaseTripIdInput').value.trim();
-      if (!code) return showToast('먼저 방 코드를 생성하거나 입력해주세요.', 'error');
-      await navigator.clipboard.writeText(code);
-      showToast('방 코드를 복사했습니다.');
-    }
-
-    function openResetModal() { document.getElementById('resetModal').classList.remove('hidden'); }
-    function closeResetModal() { document.getElementById('resetModal').classList.add('hidden'); }
-    function confirmResetTrip() {
-      if (!confirm('현재 여행 일정을 모두 삭제하고 새 여행을 시작할까요?')) return;
-      tripState = createInitialEmptyTrip();
-      saveTripToStorage();
-      renderAll();
-      closeResetModal();
-      showToast('새 여행 노트를 만들었습니다.');
-    }
-
-    async function copyTripJsonToClipboard() {
-      try {
-        await navigator.clipboard.writeText(JSON.stringify(tripState, null, 2));
-        showToast('여행 데이터 코드를 복사했습니다.');
-      } catch (e) { showToast('복사에 실패했습니다.', 'error'); }
-    }
-    function downloadTripJsonFile() {
-      const blob = new Blob([JSON.stringify(tripState, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'our-travel-note-backup.json';
-      a.click();
-      URL.revokeObjectURL(url);
-    }
-    function importTripJsonFromText() {
-      try {
-        const data = JSON.parse(document.getElementById('importJsonTextarea').value);
-        if (!data || !Array.isArray(data.days) || !data.days.length) throw new Error('invalid');
-        tripState = {
-          ...createInitialEmptyTrip(),
-          ...data,
-          days: data.days.map(day => ({
-            highlight: String(day.highlight || ''),
-            items: Array.isArray(day.items) ? day.items : []
-          }))
-        };
-        tripState.activeDayIndex = Math.min(Math.max(0, Number(tripState.activeDayIndex) || 0), tripState.days.length - 1);
-        saveTripToStorage();
-        renderAll();
-        showToast('여행 일정을 불러왔습니다.');
-      } catch (e) { showToast('올바른 여행 JSON 데이터가 아닙니다.', 'error'); }
-    }
-    function importTripJsonFile(event) {
-      const file = event.target.files?.[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        document.getElementById('importJsonTextarea').value = String(reader.result || '');
-        importTripJsonFromText();
-      };
-      reader.readAsText(file);
-      event.target.value = '';
-    }
-
-    function saveGoogleMapsApiKey() {
-      const key = document.getElementById('googleMapsKeyInput').value.trim();
-      appSettings.googleMapsApiKey = key;
-      saveSettingsToStorage();
-      if (key) loadGoogleMapsScript(key);
-      else {
-        isGoogleMapsReady = false;
-        document.getElementById('googleMapContainer').classList.add('hidden');
-        document.getElementById('leafletMapContainer').classList.remove('hidden');
-        updateMapEngineBadge(false);
-        renderMapMarkersAndRoute();
-      }
-      showToast(key ? 'Google Maps 키를 저장했습니다.' : '기본 지도로 전환했습니다.');
-    }
-
-    async function copyCoupleInviteLink() {
-      const room = document.getElementById('firebaseTripIdInput').value.trim();
-      const configText = document.getElementById('firebaseConfigInput').value.trim();
-      if (!room || !configText) return showToast('방 코드와 Firebase 설정을 먼저 입력해주세요.', 'error');
-
-      try {
-        const config = JSON.parse(configText);
-        if (!config.projectId || !config.apiKey) throw new Error('invalid config');
-        appSettings.firebaseTripId = room;
-        appSettings.firebaseConfigStr = JSON.stringify(config);
-        saveSettingsToStorage();
-
-        const encodedConfig = btoa(unescape(encodeURIComponent(JSON.stringify(config))));
-        const inviteUrl = `${location.origin}${location.pathname}?room=${encodeURIComponent(room)}&cfg=${encodeURIComponent(encodedConfig)}`;
-        await navigator.clipboard.writeText(inviteUrl);
-        showToast('초대 링크를 복사했습니다. 여자친구에게 보내주세요.');
-      } catch (e) {
-        showToast('Firebase 설정 JSON을 확인해주세요.', 'error');
-      }
-    }
-
-    // Firebase SDK는 CDN 모듈로 불러오므로 별도 빌드 도구가 필요하지 않습니다.
-    async function connectFirebaseSync(silent = false) {
-      const room = (document.getElementById('firebaseTripIdInput')?.value || appSettings.firebaseTripId || '').trim();
-      const configText = (document.getElementById('firebaseConfigInput')?.value || appSettings.firebaseConfigStr || '').trim();
-      if (!room || !configText) {
-        if (!silent) showToast('방 코드와 Firebase Config를 입력해주세요.', 'error');
-        return;
-      }
-
-      try {
-        const config = JSON.parse(configText);
-        if (!config.projectId || !config.apiKey) throw new Error('Firebase 설정이 올바르지 않습니다.');
-        appSettings.firebaseTripId = room;
-        appSettings.firebaseConfigStr = JSON.stringify(config);
-        saveSettingsToStorage();
-
-        if (firebaseUnsubscribe) firebaseUnsubscribe();
-        const appSdk = await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js');
-        const dbSdk = await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js');
-        const app = appSdk.initializeApp(config, `couple-trip-${room}-${Date.now()}`);
-        firestoreDbRef = dbSdk.getFirestore(app);
-        firestoreDocFn = dbSdk.doc;
-        firestoreSetDocFn = dbSdk.setDoc;
-
-        const ref = firestoreDocFn(firestoreDbRef, 'coupleTrips', room);
-        updateSyncBadge('syncing');
-        let firstSnapshot = true;
-
-        firebaseUnsubscribe = dbSdk.onSnapshot(ref, async snapshot => {
-          if (snapshot.exists()) {
-            const remote = snapshot.data();
-            // Do not replace local data with an older remote copy.
-            if (Number(remote.updatedAt || 0) >= Number(tripState.updatedAt || 0)) {
-              isApplyingRemoteUpdate = true;
-              tripState = { ...createInitialEmptyTrip(), ...remote };
-              if (!Array.isArray(tripState.days) || !tripState.days.length) tripState.days = [{ highlight: '', items: [] }];
-              tripState.activeDayIndex = Math.min(Math.max(0, Number(tripState.activeDayIndex) || 0), tripState.days.length - 1);
-              localStorage.setItem(STORAGE_KEY, JSON.stringify(tripState));
-              renderAll();
-              isApplyingRemoteUpdate = false;
-            } else if (firstSnapshot) {
-              // Local copy is newer: preserve it and publish it instead of overwriting it.
-              await firestoreSetDocFn(ref, { ...tripState, updatedAt: Date.now() }, { merge: true });
-            }
-          } else if (firstSnapshot) {
-            // First device creates the room; the second device will receive this snapshot.
-            await firestoreSetDocFn(ref, { ...tripState, updatedAt: Date.now() }, { merge: true });
-          }
-          firstSnapshot = false;
-          updateSyncBadge('synced');
-        }, error => {
-          console.error('Firestore listener error:', error);
-          updateSyncBadge('error');
-          showToast('실시간 연결 오류: Firebase 보안 규칙과 설정을 확인해주세요.', 'error');
-        });
-        if (!silent) showToast('실시간 동기화에 연결했습니다.');
-      } catch (error) {
-        console.error(error);
-        firestoreDbRef = null;
-        updateSyncBadge('error');
-        if (!silent) showToast('Firebase 연결에 실패했습니다. Config와 Firestore 설정을 확인해주세요.', 'error');
-      }
-    }
-
-    async function pushTripToFirebase() {
-      if (!firestoreDbRef || !firestoreDocFn || !firestoreSetDocFn || !appSettings.firebaseTripId) return;
-      try {
-        const ref = firestoreDocFn(firestoreDbRef, 'coupleTrips', appSettings.firebaseTripId);
-        await firestoreSetDocFn(ref, { ...tripState, updatedAt: Date.now() }, { merge: true });
-        tripState.updatedAt = Date.now();
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(tripState));
-        updateSyncBadge('synced');
-      } catch (error) {
-        console.error('Firebase 저장 실패:', error);
-        updateSyncBadge('error');
-        showToast('온라인 저장에 실패했습니다. 사진 용량 또는 Firebase 규칙을 확인해주세요.', 'error');
-      }
-    }
-
-    function disconnectFirebase() {
-      if (firebaseUnsubscribe) firebaseUnsubscribe();
-      firebaseUnsubscribe = null;
-      firestoreDbRef = null;
-      firestoreDocFn = null;
-      firestoreSetDocFn = null;
-      appSettings.firebaseConfigStr = '';
-      appSettings.firebaseTripId = '';
-      saveSettingsToStorage();
-      updateSyncBadge('local');
-      showToast('실시간 연동을 해제했습니다.');
-    }
-
-    function updateSyncBadge(status) {
-      const badge = document.getElementById('syncStatusBadge');
-      if (!badge) return;
-      const states = {
-        local: ['로컬 저장', 'bg-stone-100 text-stone-600'],
-        syncing: ['동기화 중...', 'bg-amber-100 text-amber-700'],
-        synced: ['실시간 동기화됨', 'bg-emerald-100 text-emerald-700'],
-        error: ['동기화 오류', 'bg-red-100 text-red-700']
-      };
-      const [label, classes] = states[status] || states.local;
-      badge.className = `inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${classes}`;
-      badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-current"></span><span>${label}</span>`;
-    }
-
-    function showToast(message, type = 'success') {
-      const container = document.getElementById('toastContainer');
-      if (!container) return;
-      const toast = document.createElement('div');
-      toast.className = `animate-toast mb-2 px-4 py-2.5 rounded-xl shadow-lg text-xs font-semibold text-white ${type === 'error' ? 'bg-red-600' : 'bg-stone-900'}`;
-      toast.textContent = message;
-      container.appendChild(toast);
-      setTimeout(() => toast.remove(), 2800);
-    }
-
-    // 초기 상태를 한국 현지 날짜 기준으로 맞추기 위한 안전한 날짜 처리
-    function getKoreaTodayString() {
-      const parts = new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit'
-      }).formatToParts(new Date());
-      const v = Object.fromEntries(parts.map(p => [p.type, p.value]));
-      return `${v.year}-${v.month}-${v.day}`;
-    }
-
-    // 기존 초기화 함수에서 UTC 날짜 대신 한국 날짜 사용
-    const _originalCreateInitialEmptyTrip = createInitialEmptyTrip;
-    createInitialEmptyTrip = function () {
-      const trip = _originalCreateInitialEmptyTrip();
-      trip.startDate = getKoreaTodayString();
-      trip.endDate = trip.startDate;
-      return trip;
-    };
-
-    // 날짜 범위 변경으로 일정이 잘려나갈 때 실수 방지
-    const _originalSyncDaysWithDateRange = syncDaysWithDateRange;
-    syncDaysWithDateRange = function () {
-      if (!tripState.startDate || !tripState.endDate) return;
-      const start = new Date(tripState.startDate + 'T00:00:00');
-      const end = new Date(tripState.endDate + 'T00:00:00');
-      const count = Math.max(1, Math.min(30, Math.round((end - start) / 86400000) + 1));
-      if (count < tripState.days.length) {
-        const removed = tripState.days.slice(count).reduce((n, d) => n + (d.items || []).length, 0);
-        if (removed && !confirm(`날짜를 줄이면 ${removed}개의 일정이 삭제됩니다. 계속할까요?`)) {
-          tripState.endDate = tripState.startDate;
-          return;
-        }
-      }
-      _originalSyncDaysWithDateRange();
-    };
-
-    // 초기화 시점의 지도/데이터 상태 표시
-    window.addEventListener('online', () => showToast('인터넷 연결이 복구되었습니다.'));
-    window.addEventListener('offline', () => showToast('오프라인 상태입니다. 변경 내용은 로컬에 저장됩니다.', 'error'));
-  </script>
-</body>
-</html>
